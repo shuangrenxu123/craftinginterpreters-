@@ -1,0 +1,9 @@
+# ninja log v7
+2	77	7981128595575089	CMakeFiles/hello.dir/main.c.obj	5040a5797d06e675
+97	177	7984528971584240	hello.exe	bde62e917de7f700
+2	90	7984528970645097	CMakeFiles/hello.dir/src/main.c.obj	3019832b52033523
+11	115	7984484899758274	CMakeFiles/hello.dir/src/chunk.c.obj	1bfaa906cbd141a0
+2	91	7984472142568626	CMakeFiles/hello.dir/src/memory.c.obj	6dc4f666b237b530
+12	96	7984528970735125	CMakeFiles/hello.dir/src/debug.c.obj	3a33bb5dd687bf81
+49	1273	7984463609521683	CMakeFiles/hello.dir/src/value.c.obj	fd9e49a6b78d5d6e
+11	96	7984528031743983	CMakeFiles/hello.dir/src/vm.c.obj	153b640747cb039

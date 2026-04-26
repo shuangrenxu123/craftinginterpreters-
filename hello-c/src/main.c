@@ -1,21 +1,14 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
-#include "common.h"
-#include "chunk.h"
-#include "debug.h"
 #include "vm.h"
 
-/// @brief 用于读取输入-》处理结果 read - Eval -print -loop
-static void repl()
+static void repl(void)
 {
     char line[1024];
-    while (1)
-    {
+    while (1) {
         printf("> ");
-        if (!fgets(line, sizeof(line), stdin))
-        {
+        if (!fgets(line, sizeof(line), stdin)) {
             printf("\n");
             break;
         }
@@ -24,54 +17,63 @@ static void repl()
     }
 }
 
-// 读取一个文件中的所有字符
-static char *runfile(const char *path)
+static char *readFile(const char *path)
 {
     FILE *file = fopen(path, "rb");
-    if (file == NULL)
-    {
-        fprintf("Cant Load File path : %s", path);
+    if (file == NULL) {
+        fprintf(stderr, "Cant load file path: %s\n", path);
         exit(74);
     }
+
     fseek(file, 0L, SEEK_END);
-    size_t fileSize = ftell(file);
+    size_t fileSize = (size_t)ftell(file);
     rewind(file);
 
     char *buffer = (char *)malloc(fileSize + 1);
-    if (buffer == NULL)
-    {
+    if (buffer == NULL) {
         fprintf(stderr, "Not enough memory to read \"%s\".\n", path);
         exit(74);
     }
-    size_t byteRead = fread(buffer, sizeof(char), fileSize, file);
-    // 新增部分开始
-    if (bytesRead < fileSize)
-    {
+
+    size_t bytesRead = fread(buffer, sizeof(char), fileSize, file);
+    if (bytesRead < fileSize) {
         fprintf(stderr, "Could not read file \"%s\".\n", path);
         exit(74);
     }
-    buffer[byteRead] = '\0';
+
+    buffer[bytesRead] = '\0';
     fclose(file);
     return buffer;
+}
+
+static void runFile(const char *path)
+{
+    char *source = readFile(path);
+    interpretResult result = interpret(source);
+    free(source);
+
+    if (result == INTERPRET_ERROR) {
+        exit(65);
+    }
+
+    if (result == INTERPRET_RUNTIME) {
+        exit(70);
+    }
 }
 
 int main(int argc, const char *argv[])
 {
     initVM();
-    if (argc == 1)
-    {
+
+    if (argc == 1) {
         repl();
-    }
-    else if (argc == 2)
-    {
+    } else if (argc == 2) {
         runFile(argv[1]);
-    }
-    else
-    {
-        fprintf(stderr, "Usage [path] \n");
+    } else {
+        fprintf(stderr, "Usage: hello [path]\n");
+        exit(64);
     }
 
     freeVM();
-    scanf("1");
     return 0;
 }

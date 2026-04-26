@@ -5,29 +5,27 @@
 #include "value.h"
 
 #define STACK_MAX 256
-typedef struct
-{
+
+typedef struct {
     chunk *chunk;
-    // 说是叫ip,但是其实是第一个执行 开始的byte地址
+    // Points to the next bytecode instruction to execute.
     uint8_t *ip;
 
     value stack[STACK_MAX];
     value *stackTop;
 } VM;
 
-typedef enum
-{
+typedef enum {
     INTERPRET_OK,
     INTERPRET_ERROR,
     INTERPRET_RUNTIME,
-
 } interpretResult;
 
-void initVM();
-void freeVM();
+void initVM(void);
+void freeVM(void);
 void push(value value);
-value pop();
+value pop(void);
 
-interpretResult interpret(const char* source);
+interpretResult interpret(const char *source);
 
 #endif

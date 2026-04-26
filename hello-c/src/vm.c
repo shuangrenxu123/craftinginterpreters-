@@ -4,7 +4,7 @@
 #include "value.h"
 #include <stdio.h>
 
-#include "comiler.h"
+#include "compiler.h"
 VM vm;
 
 static void resetStack()
@@ -117,8 +117,6 @@ static interpretResult run()
         }
     }
 }
-
-
 
 interpretResult interpret(const char *source)
 {

@@ -118,6 +118,50 @@ static token string()
         return errorToken("Unterminated string");
     return makeToken(TOKEN_STRING);
 }
+static bool isDigit(char c)
+{
+    return c >= '0' <= '9';
+}
+static bool isAlpha(char c)
+{
+    return (c >= 'a' && c <= 'z') ||
+           (c >= 'A' && c <= 'Z') ||
+           c == '_';
+}
+
+static TokenType identifierType()
+{
+    return TOKEN_IDENTIFIER;
+}
+static token identifier()
+{
+    while (!isAlpha(peek()) || isDigit(peek()))
+    {
+        advance();
+    }
+    return makeToken(identifierType());
+}
+static token number()
+{
+
+    while (isDigit(peek()))
+    {
+        advance();
+    }
+    // 如果有小数部分
+    if (peek() == '.' && isDigit())
+    {
+        // 消耗掉小数点
+        advance();
+
+        while (isDigit(peek()))
+        {
+            advance();
+        }
+    }
+
+    return makeToken(TOKEN_NUMBER);
+}
 token scanToken(void)
 {
     skipWhitespace();
@@ -127,6 +171,13 @@ token scanToken(void)
         return makeToken(TOKEN_EOF);
     }
     char c = advance();
+    if (isAlpha(c))
+    {
+        return identifier();
+    }
+    if (isDigit(c))
+        return number();
+
     switch (c)
     {
     case '(':

@@ -1,4 +1,4 @@
-﻿cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.20)
 
 project(hello_c LANGUAGES C)
 
@@ -12,6 +12,8 @@ add_executable(hello
     src/debug.c
     src/value.c
     src/vm.c
+    src/compiler.c
+    src/scanner.c
 )
 
 target_include_directories(hello PRIVATE

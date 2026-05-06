@@ -4,11 +4,20 @@
 
 #include "common.h"
 
+typedef enum
+{
+    // 普通模式
+    NORMAL,
+    // 插值模式，该模式下会把 } 识别为插值Token结束
+    INTERPOLATION
+} ScannerModelType;
+
 typedef struct
 {
     const char *start;
     const char *current;
     int line;
+    ScannerModelType modelType;
 } Scanner;
 
 static Scanner scanner;
@@ -17,6 +26,7 @@ void initScanner(const char *source)
 {
     scanner.start = source;
     scanner.current = source;
+    scanner.modelType = NORMAL;
     scanner.line = 1;
 }
 
@@ -101,26 +111,70 @@ static void skipWhitespace()
                 return;
             }
         default:
-            break;
+            return;
         }
     }
 }
 
+static TokenType checkKeyword(int start, int length, const char *rest, TokenType tokenType)
+{
+    if (scanner.current - scanner.start == start + length && memcmp(scanner.start + start, rest, length) == 0)
+    {
+        return tokenType;
+    }
+    return TOKEN_IDENTIFIER;
+}
+
 static token string()
 {
-    while (peek() != '"' && !isAtEnd())
+    while (!isAtEnd())
     {
+        if (peek() == '"' || (peek() == '$' && peekNext() == '{'))
+        {
+            break;
+        }
         if (peek() == '\n')
+        {
             scanner.line++;
+        }
+        // 消耗掉\n
         advance();
     }
-    if (isAtEnd())
-        return errorToken("Unterminated string");
-    return makeToken(TOKEN_STRING);
+    // 如果是两个字符，那也就是${
+    if (scanner.current > scanner.start)
+    {
+        return makeToken(TOKEN_INTERPOLATION_START);
+    }
+    if (peek() == $ && peekNext() == '{')
+    {
+        advance();
+        advance();
+        scanner.modelType = INTERPOLATION;
+        return makeToken(TOKEN_INTERPOLATION_START);
+    }
+
+    if (peek() == "")
+    {
+        advance();
+        scanner.modelType = NORMAL;
+        return makeToken(TOKEN_INTERPOLATION_END);
+    }
+    return errorToken("Unterminated  string");
+
+    // while (peek() != '"' && !isAtEnd())
+    // {
+    //     if (peek() == '\n')
+    //         scanner.line++;
+    //     advance();
+    // }
+    // advance();
+    // if (isAtEnd())
+    //     return errorToken("Unterminated string");
+    // return makeToken(TOKEN_STRING);
 }
 static bool isDigit(char c)
 {
-    return c >= '0' <= '9';
+    return c >= '0' && c <= '9';
 }
 static bool isAlpha(char c)
 {
@@ -131,11 +185,63 @@ static bool isAlpha(char c)
 
 static TokenType identifierType()
 {
+    switch (scanner.start[0])
+    {
+    case 'a':
+        return checkKeyword(1, 2, "nd", TOKEN_AND);
+    case 'c':
+        return checkKeyword(1, 4, "lass", TOKEN_CLASS);
+    case 'e':
+        return checkKeyword(1, 3, "lse", TOKEN_ELSE);
+
+    case 'f':
+        if (scanner.current - scanner.start > 1)
+        {
+            switch (scanner.start[1])
+            {
+            case 'a':
+                return checkKeyword(2, 3, "lse", TOKEN_FALSE);
+            case 'o':
+                return checkKeyword(2, 1, "r", TOKEN_FOR);
+            case 'u':
+                return checkKeyword(2, 1, "n", TOKEN_FUN);
+            }
+        }
+        break;
+    case 'i':
+        return checkKeyword(1, 1, "f", TOKEN_IF);
+    case 'n':
+        return checkKeyword(1, 2, "il", TOKEN_NIL);
+    case 'o':
+        return checkKeyword(1, 1, "r", TOKEN_OR);
+    case 'p':
+        return checkKeyword(1, 4, "rint", TOKEN_PRINT);
+    case 'r':
+        return checkKeyword(1, 5, "eturn", TOKEN_RETURN);
+    case 's':
+        return checkKeyword(1, 4, "uper", TOKEN_SUPER);
+    case 't':
+        if (scanner.current - scanner.start > 1)
+        {
+            switch (scanner.start[1])
+            {
+            case 'h':
+                return checkKeyword(2, 2, "is", TOKEN_THIS);
+            case 'r':
+                return checkKeyword(2, 2, "ue", TOKEN_TRUE);
+            }
+        }
+        break;
+    case 'v':
+        return checkKeyword(1, 2, "ar", TOKEN_VAR);
+    case 'w':
+        return checkKeyword(1, 4, "hile", TOKEN_WHILE);
+    }
     return TOKEN_IDENTIFIER;
 }
 static token identifier()
 {
-    while (!isAlpha(peek()) || isDigit(peek()))
+    while (isAlpha(peek()) || isDigit(peek()))
     {
         advance();
     }
@@ -149,7 +255,7 @@ static token number()
         advance();
     }
     // 如果有小数部分
-    if (peek() == '.' && isDigit())
+    if (peek() == '.' && isDigit(peekNext()))
     {
         // 消耗掉小数点
         advance();
@@ -187,7 +293,15 @@ token scanToken(void)
     case '{':
         return makeToken(TOKEN_LEFT_BRACE);
     case '}':
-        return makeToken(TOKEN_RIGHT_BRACE);
+        if (scanner.modelType == NORMAL)
+        {
+            scanner.modelType = NORMAL;
+            return makeToken(TOKEN_RIGHT_BRACE);
+        }
+        else
+        {
+            makeToken(TOKEN_INTERPOLATION_END);
+        }
     case ';':
         return makeToken(TOKEN_SEMICOLON);
     case ',':

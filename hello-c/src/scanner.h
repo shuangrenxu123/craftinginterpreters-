@@ -29,6 +29,7 @@ typedef enum
     TOKEN_NUMBER,
 
     // 关键字
+
     TOKEN_AND,
     TOKEN_CLASS,
     TOKEN_ELSE,
@@ -48,6 +49,10 @@ typedef enum
 
     TOKEN_ERROR,
     TOKEN_EOF,
+    // 符号关键字
+
+    TOKEN_INTERPOLATION_START,
+    TOKEN_INTERPOLATION_END
 
 } TokenType;
 

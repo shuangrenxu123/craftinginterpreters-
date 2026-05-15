@@ -41,7 +41,6 @@ typedef struct
 
 void initChunk(chunk *chunk);
 void writeChunk(chunk *chunk, uint8_t byte, int line);
-
 void writeConstant(chunk *chunk, value value, int line);
 
 void freeChunk(chunk *chunk);

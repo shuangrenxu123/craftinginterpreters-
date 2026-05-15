@@ -6,7 +6,8 @@
 
 #define STACK_MAX 256
 
-typedef struct {
+typedef struct
+{
     chunk *chunk;
     // Points to the next bytecode instruction to execute.
     uint8_t *ip;
@@ -15,7 +16,8 @@ typedef struct {
     value *stackTop;
 } VM;
 
-typedef enum {
+typedef enum
+{
     INTERPRET_OK,
     INTERPRET_ERROR,
     INTERPRET_RUNTIME,

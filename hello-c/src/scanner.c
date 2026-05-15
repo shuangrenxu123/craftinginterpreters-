@@ -145,7 +145,7 @@ static token string()
     {
         return makeToken(TOKEN_INTERPOLATION_START);
     }
-    if (peek() == $ && peekNext() == '{')
+    if (peek() == '$' && peekNext() == '{')
     {
         advance();
         advance();

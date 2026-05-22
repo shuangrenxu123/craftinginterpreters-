@@ -15,10 +15,20 @@ typedef enum
 {
     OP_NEGATE, // 取反
 
+    OP_NIL,
+    OP_TRUE,
+    OP_FALSE,
+
     OP_ADD,      // +
     OP_SUBTRACT, // -
     OP_MULTIPLY, // *
     OP_DIVIDE,   // /
+
+    OP_NOT,
+
+    OP_EQUAL,   //=
+    OP_GREATER, //>
+    OP_LESS,    //<
 
     OP_CONSTANT_LONG, // 扩容常量
     OP_CONSTANT,      // 常量

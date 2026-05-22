@@ -34,7 +34,8 @@ static int constantInstruction(const char *name, chunk *chunk, int offset)
     }
 
     printf("name is %s | index is : %d |", name, constant);
-    printf("value is :%g", chunk->constants.value[constant]);
+    printf("value is :");
+    printValue(chunk->constants.value[constant]);
 
     return offset + 1 + constantOffset;
 }
@@ -63,6 +64,18 @@ int disassembleInstruction(chunk *chunk, int offset)
         return simpleInstruction("OP_MULTIPLY", offset);
     case OP_DIVIDE:
         return simpleInstruction("OP_DIVIDE", offset);
+    case OP_EQUAL:
+        return simpleInstruction("OP_EQUAL", offset);
+    case OP_GREATER:
+        return simpleInstruction("OP_GREATER", offset);
+    case OP_LESS:
+        return simpleInstruction("OP_LESS", offset);
+    case OP_NIL:
+        return simpleInstruction("OP_NIL", offset);
+    case OP_TRUE:
+        return simpleInstruction("true", offset);
+    case OP_FALSE:
+        return simpleInstruction("false", offset);
     default:
         printf("UnKnow opcode");
         break;

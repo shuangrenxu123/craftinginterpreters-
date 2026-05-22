@@ -2,6 +2,10 @@
 #include "chunk.h"
 #include "scanner.h"
 
+#ifdef DEBUG_PRINT_CODE
+#include "debug.h"
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -113,6 +117,7 @@ static void parsePrecedence(Precedence precedence)
         return;
     }
     prefixRule();
+
     while (precedence <= getRule(parser.current.type)->precedence)
     {
         advance();
@@ -126,6 +131,11 @@ static void emitByte(uint8_t byte)
     writeChunk(currentChunk(), byte, parser.previous.line);
 }
 
+static void emitBytes(uint8_t b1, uint8_t b2)
+{
+    writeChunk(currentChunk(), b1, parser.previous.line);
+    writeChunk(currentChunk(), b2, parser.previous.line);
+}
 static void emitReturn()
 {
     emitByte(OP_RETURN);
@@ -133,7 +143,15 @@ static void emitReturn()
 static void endCompiler()
 {
     emitReturn();
+
+#ifdef DEBUG_PRINT_CODE
+    if (!parser.hadError)
+    {
+        disassembleChunk(currentChunk(), "code");
+    }
+#endif
 }
+
 static void binary()
 {
     TokenType operatorType = parser.previous.type;
@@ -153,30 +171,69 @@ static void binary()
     case TOKEN_SLASH:
         emitByte(OP_DIVIDE);
         break;
+
+    case TOKEN_BANG_EQUAL: // !=
+        emitBytes(OP_EQUAL, OP_NOT);
+        break;
+    case TOKEN_EQUAL_EQUAL:
+        emitByte(OP_EQUAL);
+        break;
+    case TOKEN_GREATER:
+        emitByte(OP_GREATER);
+        break;
+    case TOKEN_GREATER_EQUAL:
+        emitBytes(OP_LESS, OP_NOT);
+    case TOKEN_LESS:
+        emitByte(OP_LESS);
+        break;
+    case TOKEN_LESS_EQUAL:
+        emitBytes(OP_GREATER, OP_NOT);
     default:
         break;
     }
 }
-static void emitConstant(double value)
+// 写入一个字面量
+static void literal()
+{
+    switch (parser.previous.type)
+    {
+    case TOKEN_FALSE:
+        emitByte(OP_FALSE);
+        break;
+    case TOKEN_TRUE:
+        emitByte(OP_TRUE);
+        break;
+    case TOKEN_NIL:
+        emitByte(OP_NIL);
+        break;
+    default:
+        break;
+    }
+}
+
+static void emitConstant(value value)
 {
     writeConstant(currentChunk(), value, parser.previous.line);
 }
 
 static void number()
 {
-    double value = strtod(parser.previous.start, NULL);
-    emitConstant(value);
+    double number = strtod(parser.previous.start, NULL);
+    emitConstant(NUMBER_VAL(number));
 }
 
 static void unary()
 {
     TokenType operatorType = parser.previous.type;
-    // expression();
     parsePrecedence(PREC_UNARY);
     if (operatorType == TOKEN_MINUS)
     {
         emitByte(OP_NEGATE);
-    };
+    }
+    else if (operatorType == TOKEN_BANG)
+    {
+        emitByte(OP_NOT);
+    }
 }
 
 static void grouping()
@@ -198,14 +255,15 @@ ParserRule rules[] = {
     [TOKEN_SEMICOLON] = {NULL, NULL, PREC_NONE},
     [TOKEN_SLASH] = {NULL, binary, PREC_FACTOR},
     [TOKEN_STAR] = {NULL, binary, PREC_FACTOR},
-    [TOKEN_BANG] = {NULL, NULL, PREC_NONE},
-    [TOKEN_BANG_EQUAL] = {NULL, NULL, PREC_NONE},
+    [TOKEN_BANG] = {unary, NULL, PREC_NONE},
+    [TOKEN_BANG_EQUAL] = {NULL, binary, PREC_NONE},
     [TOKEN_EQUAL] = {NULL, NULL, PREC_NONE},
-    [TOKEN_EQUAL_EQUAL] = {NULL, NULL, PREC_NONE},
-    [TOKEN_GREATER] = {NULL, NULL, PREC_NONE},
-    [TOKEN_GREATER_EQUAL] = {NULL, NULL, PREC_NONE},
-    [TOKEN_LESS] = {NULL, NULL, PREC_NONE},
-    [TOKEN_LESS_EQUAL] = {NULL, NULL, PREC_NONE},
+    [TOKEN_EQUAL_EQUAL] = {NULL, binary, PREC_NONE},
+    [TOKEN_GREATER] = {NULL, binary, PREC_NONE},
+    [TOKEN_GREATER_EQUAL] = {NULL, binary, PREC_NONE},
+    [TOKEN_LESS] = {NULL, binary, PREC_NONE},
+    [TOKEN_LESS_EQUAL] = {NULL, binary, PREC_NONE},
+
     [TOKEN_IDENTIFIER] = {NULL, NULL, PREC_NONE},
     [TOKEN_STRING] = {NULL, NULL, PREC_NONE},
     [TOKEN_NUMBER] = {number, NULL, PREC_NONE},
@@ -227,6 +285,9 @@ ParserRule rules[] = {
     [TOKEN_WHILE] = {NULL, NULL, PREC_NONE},
     [TOKEN_ERROR] = {NULL, NULL, PREC_NONE},
     [TOKEN_EOF] = {NULL, NULL, PREC_NONE},
+    [TOKEN_FALSE] = {literal, NULL, PREC_NONE},
+    [TOKEN_TRUE] = {literal, NULL, PREC_NONE},
+    [TOKEN_NIL] = {literal, NULL, PREC_NONE},
 };
 static ParserRule *getRule(TokenType type)
 {

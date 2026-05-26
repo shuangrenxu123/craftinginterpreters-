@@ -11,6 +11,7 @@ add_executable(hello
     src/memory.c
     src/debug.c
     src/value.c
+    src/object.c
     src/vm.c
     src/compiler.c
     src/scanner.c

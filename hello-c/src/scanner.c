@@ -35,7 +35,7 @@ static bool isAtEnd()
     return *scanner.current == '\0';
 }
 
-static token makeToken(TokenType type)
+static token makeToken(tokenType type)
 {
     token result;
     result.type = type;
@@ -116,7 +116,7 @@ static void skipWhitespace()
     }
 }
 
-static TokenType checkKeyword(int start, int length, const char *rest, TokenType tokenType)
+static tokenType checkKeyword(int start, int length, const char *rest, tokenType tokenType)
 {
     if (scanner.current - scanner.start == start + length && memcmp(scanner.start + start, rest, length) == 0)
     {
@@ -183,7 +183,7 @@ static bool isAlpha(char c)
            c == '_';
 }
 
-static TokenType identifierType()
+static tokenType identifierType()
 {
     switch (scanner.start[0])
     {

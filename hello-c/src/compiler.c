@@ -1,6 +1,7 @@
 #include "compiler.h"
 #include "chunk.h"
 #include "scanner.h"
+#include "object.h"
 
 #ifdef DEBUG_PRINT_CODE
 #include "debug.h"
@@ -44,7 +45,7 @@ Parser parser;
 chunk *compilingChunk;
 
 static void expression();
-static ParserRule *getRule(TokenType type);
+static ParserRule *getRule(tokenType type);
 static void parsePrecedence(Precedence precedence);
 
 static void errorAt(token *token, const char *message)
@@ -92,7 +93,7 @@ static void advance()
         errorAtCurrent(parser.current.start);
     }
 }
-static void consume(TokenType type, const char *message)
+static void consume(tokenType type, const char *message)
 {
     if (parser.current.type == type)
     {
@@ -154,7 +155,7 @@ static void endCompiler()
 
 static void binary()
 {
-    TokenType operatorType = parser.previous.type;
+    tokenType operatorType = parser.previous.type;
     ParserRule *rule = getRule(operatorType);
     parsePrecedence((Precedence)(rule->precedence + 1));
     switch (operatorType)
@@ -221,10 +222,13 @@ static void number()
     double number = strtod(parser.previous.start, NULL);
     emitConstant(NUMBER_VAL(number));
 }
-
+static void string()
+{
+    emitConstant(OBJ_VAL(copyString(parser.previous.start - 1, parser.previous.length - 2)));
+}
 static void unary()
 {
-    TokenType operatorType = parser.previous.type;
+    tokenType operatorType = parser.previous.type;
     parsePrecedence(PREC_UNARY);
     if (operatorType == TOKEN_MINUS)
     {
@@ -263,7 +267,7 @@ ParserRule rules[] = {
     [TOKEN_GREATER_EQUAL] = {NULL, binary, PREC_NONE},
     [TOKEN_LESS] = {NULL, binary, PREC_NONE},
     [TOKEN_LESS_EQUAL] = {NULL, binary, PREC_NONE},
-
+    [TOKEN_STRING] = {string, NULL, PREC_NONE},
     [TOKEN_IDENTIFIER] = {NULL, NULL, PREC_NONE},
     [TOKEN_STRING] = {NULL, NULL, PREC_NONE},
     [TOKEN_NUMBER] = {number, NULL, PREC_NONE},
@@ -289,7 +293,7 @@ ParserRule rules[] = {
     [TOKEN_TRUE] = {literal, NULL, PREC_NONE},
     [TOKEN_NIL] = {literal, NULL, PREC_NONE},
 };
-static ParserRule *getRule(TokenType type)
+static ParserRule *getRule(tokenType type)
 {
     return &rules[type];
 }

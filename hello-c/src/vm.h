@@ -14,6 +14,8 @@ typedef struct
 
     value stack[STACK_MAX];
     value *stackTop;
+
+    Obj *objects;
 } VM;
 
 typedef enum
@@ -22,6 +24,7 @@ typedef enum
     INTERPRET_ERROR,
     INTERPRET_RUNTIME,
 } interpretResult;
+extern VM vm;
 
 void initVM(void);
 void freeVM(void);

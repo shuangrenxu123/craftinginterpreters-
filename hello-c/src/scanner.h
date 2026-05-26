@@ -54,11 +54,11 @@ typedef enum
     TOKEN_INTERPOLATION_START,
     TOKEN_INTERPOLATION_END
 
-} TokenType;
+} tokenType;
 
 typedef struct
 {
-    TokenType type;
+    tokenType type;
     const char *start;
     int length;
     int line;

@@ -3,8 +3,8 @@
 
 #include "common.h"
 
-typedef struct Obj obj;
-typedef static ObjString ObjString;
+typedef struct Obj Obj;
+typedef struct ObjString ObjString;
 
 typedef enum
 {
@@ -36,7 +36,7 @@ typedef struct
 #define BOOL_VAL(v) ((value){VAL_BOOL, {.boolean = (v)}})
 #define NIL_VAL ((value){VAL_NIL, {.number = 0}})
 #define NUMBER_VAL(v) ((value){VAL_NUMBER, {.number = (v)}})
-#define OBJ_VAL(v) ((value){VAL_OBJ, {.obj = (*Obj)(v)}})
+#define OBJ_VAL(v) ((value){VAL_OBJ, {.obj = (Obj *)(v)}})
 
 #define IS_OBJ(v) ((v).type == VAL_OBJ)
 #define IS_BOOL(value) ((value).type == VAL_BOOL)

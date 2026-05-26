@@ -50,9 +50,11 @@ static bool isFalsey(value val)
 void initVM()
 {
     resetStack();
+    vm.objects = NULL;
 }
 void freeVM()
 {
+    freeObject();
 }
 
 static inline uint8_t read_byte()

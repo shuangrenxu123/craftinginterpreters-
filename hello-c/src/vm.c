@@ -2,6 +2,7 @@
 #include "common.h"
 #include "debug.h"
 #include "value.h"
+#include "memory.h"
 #include <stdio.h>
 #include <stdarg.h>
 
@@ -54,7 +55,7 @@ void initVM()
 }
 void freeVM()
 {
-    freeObject();
+    freeObjects();
 }
 
 static inline uint8_t read_byte()
@@ -170,6 +171,10 @@ static interpretResult run()
             push(NUMBER_VAL(-AS_NUMBER(pop())));
             break;
         }
+        case OP_TOSTRING:
+        {
+            // TODO: 插值字符串处理结果
+                }
         case OP_RETURN:
         {
             printValue(pop());

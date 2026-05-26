@@ -88,6 +88,7 @@ static void advance()
         parser.current = scanToken();
         if (parser.current.type != TOKEN_ERROR)
         {
+            printf("%s\n", tokenTypeName(parser.current.type));
             break;
         }
         errorAtCurrent(parser.current.start);
@@ -247,6 +248,12 @@ static void grouping()
     consume(TOKEN_RIGHT_PAREN, "Expect ')' , after expression");
 }
 
+static void Interpolation()
+{
+    expression();
+    consume(TOKEN_INTERPOLATION_END, "Expect '}' , after expression");
+    emitByte(OP_TOSTRING);
+}
 ParserRule rules[] = {
     [TOKEN_LEFT_PAREN] = {grouping, NULL, PREC_NONE},
     [TOKEN_RIGHT_PAREN] = {NULL, NULL, PREC_NONE},
@@ -269,7 +276,6 @@ ParserRule rules[] = {
     [TOKEN_LESS_EQUAL] = {NULL, binary, PREC_NONE},
     [TOKEN_STRING] = {string, NULL, PREC_NONE},
     [TOKEN_IDENTIFIER] = {NULL, NULL, PREC_NONE},
-    [TOKEN_STRING] = {NULL, NULL, PREC_NONE},
     [TOKEN_NUMBER] = {number, NULL, PREC_NONE},
     [TOKEN_AND] = {NULL, NULL, PREC_NONE},
     [TOKEN_CLASS] = {NULL, NULL, PREC_NONE},
@@ -292,6 +298,8 @@ ParserRule rules[] = {
     [TOKEN_FALSE] = {literal, NULL, PREC_NONE},
     [TOKEN_TRUE] = {literal, NULL, PREC_NONE},
     [TOKEN_NIL] = {literal, NULL, PREC_NONE},
+    [TOKEN_INTERPOLATION_START] = {Interpolation, NULL, PREC_NONE},
+    [TOKEN_INTERPOLATION_END] = {NULL, NULL, PREC_NONE},
 };
 static ParserRule *getRule(tokenType type)
 {

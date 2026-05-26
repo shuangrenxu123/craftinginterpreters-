@@ -9,7 +9,8 @@ typedef enum
     // 普通模式
     NORMAL,
     // 插值模式，该模式下会把 } 识别为插值Token结束
-    INTERPOLATION
+    INTERPOLATION,
+    INTERPOLATION_TEXT,
 } ScannerModelType;
 
 typedef struct
@@ -125,14 +126,20 @@ static tokenType checkKeyword(int start, int length, const char *rest, tokenType
     return TOKEN_IDENTIFIER;
 }
 
-static token string()
+static token string(bool interpolation)
 {
     while (!isAtEnd())
     {
-        if (peek() == '"' || (peek() == '$' && peekNext() == '{'))
+        if (peek() == '"')
         {
             break;
         }
+
+        if (interpolation && peek() == '{')
+        {
+            break;
+        }
+
         if (peek() == '\n')
         {
             scanner.line++;
@@ -140,37 +147,31 @@ static token string()
         // 消耗掉\n
         advance();
     }
-    // 如果是两个字符，那也就是${
-    if (scanner.current > scanner.start)
+
+    if (isAtEnd())
     {
-        return makeToken(TOKEN_INTERPOLATION_START);
-    }
-    if (peek() == '$' && peekNext() == '{')
-    {
-        advance();
-        advance();
-        scanner.modelType = INTERPOLATION;
-        return makeToken(TOKEN_INTERPOLATION_START);
+        return errorToken("String Error");
     }
 
-    if (peek() == "")
+    if (peek() == '"')
     {
         advance();
-        scanner.modelType = NORMAL;
-        return makeToken(TOKEN_INTERPOLATION_END);
+        return makeToken(TOKEN_STRING);
     }
-    return errorToken("Unterminated  string");
 
-    // while (peek() != '"' && !isAtEnd())
-    // {
-    //     if (peek() == '\n')
-    //         scanner.line++;
-    //     advance();
-    // }
-    // advance();
-    // if (isAtEnd())
-    //     return errorToken("Unterminated string");
-    // return makeToken(TOKEN_STRING);
+    if (interpolation && peek() == '{')
+    {
+        if (scanner.current == scanner.start)
+        {
+            advance();
+            scanner.modelType = INTERPOLATION;
+            return makeToken(TOKEN_INTERPOLATION_START);
+        }
+
+        return makeToken(TOKEN_STRING);
+    }
+
+    return errorToken("String Error");
 }
 static bool isDigit(char c)
 {
@@ -239,6 +240,20 @@ static tokenType identifierType()
     }
     return TOKEN_IDENTIFIER;
 }
+
+static bool consume(const char c, const char *errorMsg)
+{
+    if (peek() == c)
+    {
+        advance();
+        return true;
+    }
+    else
+    {
+        errorToken(errorMsg);
+        return false;
+    }
+}
 static token identifier()
 {
     while (isAlpha(peek()) || isDigit(peek()))
@@ -276,7 +291,12 @@ token scanToken(void)
     {
         return makeToken(TOKEN_EOF);
     }
+    if (scanner.modelType == INTERPOLATION_TEXT)
+    {
+        return string(true);
+    }
     char c = advance();
+
     if (isAlpha(c))
     {
         return identifier();
@@ -295,12 +315,12 @@ token scanToken(void)
     case '}':
         if (scanner.modelType == NORMAL)
         {
-            scanner.modelType = NORMAL;
             return makeToken(TOKEN_RIGHT_BRACE);
         }
         else
         {
-            makeToken(TOKEN_INTERPOLATION_END);
+            scanner.modelType = INTERPOLATION_TEXT;
+            return makeToken(TOKEN_INTERPOLATION_END);
         }
     case ';':
         return makeToken(TOKEN_SEMICOLON);
@@ -326,9 +346,15 @@ token scanToken(void)
         return makeToken(match('=') ? TOKEN_LESS_EQUAL : TOKEN_LESS);
     case '>':
         return makeToken(match('=') ? TOKEN_GREATER_EQUAL : TOKEN_GREATER);
-
+    case '$':
+        if (!consume('"', "next not is "))
+        {
+            return errorToken("next not is ");
+        }
+        scanner.modelType = INTERPOLATION_TEXT;
+        return string(true);
     case '"':
-        return string();
+        return string(false);
     }
     return errorToken("Unexpected character");
 }

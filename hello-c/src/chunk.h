@@ -26,6 +26,7 @@ typedef enum
 
     OP_NOT,
 
+    OP_TOSTRING,
     OP_EQUAL,   //=
     OP_GREATER, //>
     OP_LESS,    //<

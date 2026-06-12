@@ -120,15 +120,15 @@ static int constantInstruction(const char *name, chunk *chunk, int offset)
     uint8_t instruction = chunk->code[offset];
     uint32_t constant = 0;
     uint8_t constantOffset = 1;
-    if (instruction == OP_CONSTANT)
-    {
-        constant = chunk->code[offset + 1];
-        constantOffset = 1;
-    }
-    else
+    if (instruction == OP_CONSTANT_LONG)
     {
         constant = chunk->code[offset + 1] << 16 | chunk->code[offset + 2] << 8 | chunk->code[offset + 3];
         constantOffset = 3;
+    }
+    else
+    {
+        constant = chunk->code[offset + 1];
+        constantOffset = 1;
     }
 
     printf("name is %s | index is : %d |", name, constant);
@@ -137,6 +137,23 @@ static int constantInstruction(const char *name, chunk *chunk, int offset)
 
     return offset + 1 + constantOffset;
 }
+static int byteInstruction(const char *name, Chunk *chunk,
+                           int offset)
+{
+    uint8_t slot = chunk->code[offset + 1];
+    printf("%-16s %4d\n", name, slot);
+    return offset + 2;
+}
+static int jumpInstruction(const char *name, int sign,
+                           Chunk *chunk, int offset)
+{
+    uint16_t jump = (uint16_t)(chunk->code[offset + 1] << 8);
+    jump |= chunk->code[offset + 2];
+    printf("%-16s %4d -> %d\n", name, offset,
+           offset + 3 + sign * jump);
+    return offset + 3;
+}
+
 int disassembleInstruction(chunk *chunk, int offset)
 {
     printf("%04d :", offset);
@@ -174,6 +191,27 @@ int disassembleInstruction(chunk *chunk, int offset)
         return simpleInstruction("true", offset);
     case OP_FALSE:
         return simpleInstruction("false", offset);
+    case OP_PRINT:
+        return simpleInstruction("print", offset);
+    case OP_POP:
+        return simpleInstruction("OP_POP", offset);
+    case OP_DEFINE_GLOBAL:
+        return constantInstruction("OP_DEFINE_GLOBAL", chunk,
+                                   offset);
+    case OP_GET_GLOBAL:
+        return constantInstruction("OP_GET_GLOBAL", chunk,
+                                   offset);
+
+    case OP_GET_LOCAL:
+        return byteInstruction("OP_GET_LOCAL", chunk, offset);
+    case OP_SET_LOCAL:
+        return byteInstruction("OP_SET_LOCAL", chunk, offset);
+    case OP_JUMP:
+        return jumpInstruction("OP_JUMP", 1, chunk, offset);
+    case OP_JUMP_IF_FALSE:
+        return jumpInstruction("OP_JUMP_IF_FALSE", 1, chunk, offset);
+    case OP_LOOP:
+        return jumpInstruction("OP_LOOP", -1, chunk, offset);
     default:
         printf("UnKnow opcode");
         break;

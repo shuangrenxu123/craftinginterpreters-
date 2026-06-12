@@ -12,6 +12,7 @@ add_executable(hello
     src/debug.c
     src/value.c
     src/object.c
+    src/table.c
     src/vm.c
     src/compiler.c
     src/scanner.c

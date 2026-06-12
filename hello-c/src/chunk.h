@@ -33,7 +33,20 @@ typedef enum
 
     OP_CONSTANT_LONG, // 扩容常量
     OP_CONSTANT,      // 常量
+    OP_PRINT,
     OP_RETURN,
+    OP_POP,
+    OP_DEFINE_GLOBAL,
+    OP_GET_GLOBAL,
+    OP_SET_GLOBAL,
+
+    OP_GET_LOCAL,
+    OP_SET_LOCAL,
+
+    OP_JUMP,
+    OP_JUMP_IF_FALSE,
+
+    OP_LOOP,
 } OpCode;
 
 typedef struct

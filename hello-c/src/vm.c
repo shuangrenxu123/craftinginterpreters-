@@ -3,6 +3,7 @@
 #include "debug.h"
 #include "value.h"
 #include "memory.h"
+#include "object.h"
 #include <stdio.h>
 #include <stdarg.h>
 
@@ -52,9 +53,13 @@ void initVM()
 {
     resetStack();
     vm.objects = NULL;
+    initTable(&vm.strings);
+    initTable(&vm.globals);
 }
 void freeVM()
 {
+    freeTable(&vm.strings);
+    freeTable(&vm.globals);
     freeObjects();
 }
 
@@ -76,7 +81,11 @@ static inline value read_constant_long()
     uint32_t index = index_1 << 16 | index_2 << 8 | index_3;
     return vm.chunk->constants.value[index];
 }
+#define READ_SHORT() \
+    (vm.ip += 2, (uint16_t)((vm.ip[-2] << 8) | vm.ip[-1]))
 
+#define READ_CONSTANT() read_constant()
+#define READ_STRING() AS_STRING(READ_CONSTANT())
 #define BINARY_OP(valueType, op)                        \
     do                                                  \
     {                                                   \
@@ -173,14 +182,101 @@ static interpretResult run()
         }
         case OP_TOSTRING:
         {
-            // TODO: 插值字符串处理结果
-                }
-        case OP_RETURN:
+            if (!IS_NUMBER(peek(0)))
+            {
+                runtimeError("operand must be a number");
+                return INTERPRET_ERROR;
+            }
+            double v = AS_NUMBER(pop());
+            char buffer[64];
+
+            int length = snprintf(buffer, sizeof(buffer), "%g", v);
+            if (length < 0 || length >= (int)sizeof(buffer))
+            {
+                runtimeError("string buffer overflow");
+                return INTERPRET_ERROR;
+            }
+
+            push(OBJ_VAL(copyString(buffer, length)));
+            // TODO: 插值字符串
+        }
+        case OP_PRINT:
         {
             printValue(pop());
             printf("\n");
+            break;
+        }
+        case OP_RETURN:
+        {
             return INTERPRET_OK;
         };
+        case OP_POP:
+            pop();
+            break;
+        case OP_DEFINE_GLOBAL:
+        {
+
+            ObjString *name = READ_STRING();
+            tableSet(&vm.globals, name, peek(0));
+            pop();
+            break;
+        }
+        case OP_GET_GLOBAL:
+        {
+            ObjString *name = READ_STRING();
+            value val;
+            if (!tableGet(&vm.globals, name, &val))
+            {
+                runtimeError("Not find variable Name");
+                return INTERPRET_ERROR;
+            }
+            push(val);
+            break;
+        }
+        case OP_SET_GLOBAL:
+        {
+            ObjString *name = READ_STRING();
+            if (tableSet(&vm.globals, name, peek(0)))
+            {
+                tableDelete(&vm.globals, name);
+                runtimeError("Undefined variable '%s'.", name->chars);
+                return INTERPRET_ERROR;
+            }
+            break;
+        }
+        case OP_GET_LOCAL:
+        {
+            uint8_t slot = read_byte();
+            push(vm.stack[slot]);
+            break;
+        }
+        case OP_SET_LOCAL:
+        {
+            uint8_t slot = read_byte();
+            vm.stack[slot] = peek(0);
+            break;
+        }
+        case OP_JUMP:
+        {
+            uint16_t offset = READ_SHORT();
+            vm.ip += offset;
+            break;
+        }
+        case OP_JUMP_IF_FALSE:
+        {
+            uint16_t offset = READ_SHORT();
+            if (isFalsey(peek(0)))
+            {
+                vm.ip += offset;
+                break;
+            }
+        }
+        case OP_LOOP:
+        {
+            uint16_t offset = READ_SHORT();
+            vm.ip -= offset;
+            break;
+        }
         }
     }
 }

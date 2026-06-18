@@ -105,7 +105,9 @@ static void advance()
         parser.current = scanToken();
         if (parser.current.type != TOKEN_ERROR)
         {
+#ifdef DEBUG_PRINT_CODE
             printf("%s\n", tokenTypeName(parser.current.type));
+#endif
             break;
         }
         errorAtCurrent(parser.current.start);
@@ -149,6 +151,17 @@ static uint8_t makeConstant(value value)
     return (uint8_t)constant;
 }
 
+static void patchJump(int offset)
+{
+    int jump = currentChunk()->count - offset - 2;
+    if (jump > UINT16_MAX)
+    {
+        error("Too much code to jump over");
+    }
+    currentChunk()->code[offset] = (jump >> 8) & 0xff;
+    currentChunk()->code[offset + 1] = jump & 0xff;
+}
+
 static void parsePrecedence(Precedence precedence)
 {
     advance();
@@ -166,7 +179,7 @@ static void parsePrecedence(Precedence precedence)
     {
         advance();
         ParserFn infixRule = getRule(parser.previous.type)->infix;
-        infixRule();
+        infixRule(canAssign);
     }
     if (canAssign && match(TOKEN_EQUAL))
     {
@@ -335,7 +348,7 @@ static void number(bool canAssign)
 }
 static void string(bool canAssign)
 {
-    emitConstant(OBJ_VAL(copyString(parser.previous.start - 1, parser.previous.length - 2)));
+    emitConstant(OBJ_VAL(copyString(parser.previous.start + 1, parser.previous.length - 2)));
 }
 
 static int resolveLocal(Compiler *compiler, token *name)
@@ -612,16 +625,7 @@ static void block()
 
     consume(TOKEN_RIGHT_BRACE, "Exprect } after");
 }
-static void patchJump(int offset)
-{
-    int jump = currentChunk()->count - offset - 2;
-    if (jump > UINT16_MAX)
-    {
-        error("Too much code to jump over");
-    }
-    currentChunk()->code[offset] = (jump >> 8) & 0xff;
-    currentChunk()->code[offset + 1] = jump & 0xff;
-}
+
 static void whileStatement()
 {
     int loopStart = currentChunk()->count;
@@ -636,6 +640,58 @@ static void whileStatement()
     emitLoop(loopStart);
 
     patchJump(exitJump);
+    emitByte(OP_POP);
+}
+static void switchCaseStatement()
+{
+    int endJumps[128];
+    int caseIndex = 0;
+
+    while (match(TOKEN_CASE))
+    {
+        emitByte(OP_DUP);
+
+        expression();
+        consume(TOKEN_COLON, "not is :");
+
+        emitByte(OP_EQUAL);
+        int nextCaseJump = emitJump(OP_JUMP_IF_FALSE);
+        emitByte(OP_POP);
+        while (!(check(TOKEN_CASE) || check(TOKEN_RIGHT_BRACE) || check(TOKEN_DEFAULT) || check(TOKEN_EOF)))
+        {
+            statement();
+        }
+        int endJump = emitJump(OP_JUMP);
+        patchJump(nextCaseJump);
+        emitByte(OP_POP);
+        endJumps[caseIndex++] = endJump;
+    }
+
+    if (match(TOKEN_DEFAULT))
+    {
+        consume(TOKEN_COLON, "not is :");
+        while (!(check(TOKEN_CASE) || check(TOKEN_RIGHT_BRACE) || check(TOKEN_DEFAULT) || check(TOKEN_EOF)))
+        {
+            statement();
+        }
+    }
+
+    for (int i = 0; i < caseIndex; i++)
+    {
+        patchJump(endJumps[i]);
+    }
+}
+static void switchStatement()
+{
+    consume(TOKEN_LEFT_PAREN, "not is (");
+    expression();
+    consume(TOKEN_RIGHT_PAREN, "not is )");
+
+    consume(TOKEN_LEFT_BRACE, "not is {");
+
+    switchCaseStatement();
+
+    consume(TOKEN_RIGHT_BRACE, "not is }");
     emitByte(OP_POP);
 }
 static void forStatement()
@@ -687,6 +743,25 @@ static void forStatement()
     endScope();
 }
 
+static void ifStatement()
+{
+    consume(TOKEN_LEFT_BRACE, "Exprect ( after");
+    expression();
+    consume(TOKEN_RIGHT_BRACE, "not is )");
+
+    int thenJump = emitJump(OP_JUMP_IF_FALSE);
+    emitByte(OP_POP);
+    statement();
+
+    int elseJump = emitJump(OP_JUMP);
+
+    patchJump(thenJump);
+    emitByte(OP_POP);
+    if (match(TOKEN_ELSE))
+    {
+        statement();
+    }
+}
 static void statement()
 {
     if (match(TOKEN_PRINT))
@@ -696,6 +771,10 @@ static void statement()
     else if (match(TOKEN_IF))
     {
         ifStatement();
+    }
+    else if (match(TOKEN_SWITCH))
+    {
+        switchStatement();
     }
     else if (match(TOKEN_WHILE))
     {
@@ -717,25 +796,6 @@ static void statement()
     }
 }
 
-static void ifStatement()
-{
-    consume(TOKEN_LEFT_BRACE, "Exprect ( after");
-    expression();
-    consume(TOKEN_RIGHT_BRACE, "not is )");
-
-    int thenJump = emitJump(OP_JUMP_IF_FALSE);
-    emitByte(OP_POP);
-    statement();
-
-    int elseJump = emitJump(OP_JUMP);
-
-    patchJump(thenJump);
-    emitByte(OP_POP);
-    if (match(TOKEN_ELSE))
-    {
-        statement();
-    }
-}
 bool compile(const char *source, chunk *chunk)
 {
     initScanner(source);

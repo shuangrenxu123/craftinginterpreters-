@@ -103,7 +103,6 @@ static interpretResult run()
 {
     while (1)
     {
-
 #ifdef DEBUG_TRACE_EXECUTION
         printf("       ");
         for (value *slot = vm.stack; slot < vm.stackTop; slot++)
@@ -123,7 +122,6 @@ static interpretResult run()
             value constant = read_constant_long();
             // printValue(constant);
             push(constant);
-            printf("\n");
             break;
         }
         case OP_CONSTANT:
@@ -131,7 +129,6 @@ static interpretResult run()
             value constant = read_constant();
             // printValue(constant);
             push(constant);
-            printf("\n");
             break;
         }
         case OP_ADD:
@@ -151,6 +148,7 @@ static interpretResult run()
             value a = pop();
             value b = pop();
             push(BOOL_VAL(valuesEqual(a, b)));
+            break;
         }
 
         case OP_GREATER:
@@ -268,13 +266,18 @@ static interpretResult run()
             if (isFalsey(peek(0)))
             {
                 vm.ip += offset;
-                break;
             }
+            break;
         }
         case OP_LOOP:
         {
             uint16_t offset = READ_SHORT();
             vm.ip -= offset;
+            break;
+        }
+        case OP_DUP:
+        {
+            push(peek(0));
             break;
         }
         }

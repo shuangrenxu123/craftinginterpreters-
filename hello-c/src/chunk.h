@@ -45,7 +45,7 @@ typedef enum
 
     OP_JUMP,
     OP_JUMP_IF_FALSE,
-
+    OP_DUP,//复制栈顶值
     OP_LOOP,
 } OpCode;
 

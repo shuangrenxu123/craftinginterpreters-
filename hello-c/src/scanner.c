@@ -190,8 +190,23 @@ static tokenType identifierType()
     {
     case 'a':
         return checkKeyword(1, 2, "nd", TOKEN_AND);
+    case 'b':
+        return checkKeyword(1, 4, "reak", TOKEN_BREAK);
+
     case 'c':
-        return checkKeyword(1, 4, "lass", TOKEN_CLASS);
+        if (scanner.current - scanner.start > 1)
+        {
+            switch (scanner.start[1])
+            {
+            case 'l':
+                return checkKeyword(2, 3, "ass", TOKEN_CLASS);
+            case 'a':
+                return checkKeyword(2, 2, "se", TOKEN_CASE);
+            case 'o':
+                return checkKeyword(2, 6, "ntinue", TOKEN_CONTINUE);
+            }
+        }
+
     case 'e':
         return checkKeyword(1, 3, "lse", TOKEN_ELSE);
 
@@ -220,6 +235,14 @@ static tokenType identifierType()
     case 'r':
         return checkKeyword(1, 5, "eturn", TOKEN_RETURN);
     case 's':
+        if (scanner.current - scanner.start > 1)
+        {
+            switch (scanner.start[1])
+            {
+            case 'w':
+                return checkKeyword(2, 4, "itch", TOKEN_SWITCH);
+            }
+        }
         return checkKeyword(1, 4, "uper", TOKEN_SUPER);
     case 't':
         if (scanner.current - scanner.start > 1)
@@ -237,6 +260,8 @@ static tokenType identifierType()
         return checkKeyword(1, 2, "ar", TOKEN_VAR);
     case 'w':
         return checkKeyword(1, 4, "hile", TOKEN_WHILE);
+    case 'd':
+        return checkKeyword(1, 6, "efault", TOKEN_DEFAULT);
     }
     return TOKEN_IDENTIFIER;
 }
@@ -306,6 +331,9 @@ token scanToken(void)
 
     switch (c)
     {
+    case ':':
+        return makeToken(TOKEN_COLON);
+
     case '(':
         return makeToken(TOKEN_LEFT_PAREN);
     case ')':

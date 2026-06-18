@@ -18,6 +18,8 @@ typedef enum
 
     TOKEN_BANG,
     TOKEN_BANG_EQUAL,
+    TOKEN_BREAK,
+    TOKEN_CONTINUE,
     TOKEN_EQUAL,
     TOKEN_EQUAL_EQUAL,
     TOKEN_GREATER,
@@ -42,11 +44,14 @@ typedef enum
     TOKEN_PRINT,
     TOKEN_RETURN,
     TOKEN_SUPER,
+    TOKEN_SWITCH,
+    TOKEN_CASE,
+    TOKEN_COLON,
     TOKEN_THIS,
     TOKEN_TRUE,
     TOKEN_VAR,
     TOKEN_WHILE,
-
+    TOKEN_DEFAULT,
     TOKEN_ERROR,
     TOKEN_EOF,
     // 符号关键字

@@ -137,7 +137,7 @@ static int constantInstruction(const char *name, chunk *chunk, int offset)
 
     return offset + 1 + constantOffset;
 }
-static int byteInstruction(const char *name, Chunk *chunk,
+static int byteInstruction(const char *name, chunk *chunk,
                            int offset)
 {
     uint8_t slot = chunk->code[offset + 1];
@@ -145,7 +145,7 @@ static int byteInstruction(const char *name, Chunk *chunk,
     return offset + 2;
 }
 static int jumpInstruction(const char *name, int sign,
-                           Chunk *chunk, int offset)
+                           chunk *chunk, int offset)
 {
     uint16_t jump = (uint16_t)(chunk->code[offset + 1] << 8);
     jump |= chunk->code[offset + 2];
@@ -212,6 +212,8 @@ int disassembleInstruction(chunk *chunk, int offset)
         return jumpInstruction("OP_JUMP_IF_FALSE", 1, chunk, offset);
     case OP_LOOP:
         return jumpInstruction("OP_LOOP", -1, chunk, offset);
+    case OP_DUP:
+        return simpleInstruction("OP_Dup", offset);
     default:
         printf("UnKnow opcode");
         break;

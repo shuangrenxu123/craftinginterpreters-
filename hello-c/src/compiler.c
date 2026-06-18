@@ -762,6 +762,10 @@ static void ifStatement()
         statement();
     }
 }
+static void continueStatement()
+{
+    consume(TOKEN_SEMICOLON, )
+}
 static void statement()
 {
     if (match(TOKEN_PRINT))
@@ -779,6 +783,10 @@ static void statement()
     else if (match(TOKEN_WHILE))
     {
         whileStatement();
+    }
+    else if (match(TOKEN_CONTINUE))
+    {
+        continueStatement();
     }
     else if (match(TOKEN_FOR))
     {

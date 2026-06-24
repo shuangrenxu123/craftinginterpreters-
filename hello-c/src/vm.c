@@ -156,6 +156,7 @@ static interpretResult run()
             break;
         case OP_LESS:
             BINARY_OP(BOOL_VAL, <);
+            break;
 
         case OP_TRUE:
             push(BOOL_VAL(true));

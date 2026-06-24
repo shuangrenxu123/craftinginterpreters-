@@ -33,6 +33,17 @@ typedef enum
     PREC_PRIMARY
 } Precedence;
 
+typedef struct
+{
+    int breakJumps[128];
+    int breakCount;
+    int scopeDepth;
+    int continueTarget;
+} LoopContext;
+
+static LoopContext loops[64];
+static int loopDepth = 0;
+
 typedef void (*ParserFn)(bool canAssign);
 
 typedef struct
@@ -248,6 +259,7 @@ static void emitBytes(uint8_t b1, uint8_t b2)
     writeChunk(currentChunk(), b1, parser.previous.line);
     writeChunk(currentChunk(), b2, parser.previous.line);
 }
+
 static int emitJump(uint8_t instruction)
 {
     emitByte(instruction);
@@ -255,6 +267,7 @@ static int emitJump(uint8_t instruction)
     emitByte(0xff);
     return currentChunk()->count - 2;
 }
+
 static void emitReturn()
 {
     emitByte(OP_RETURN);
@@ -302,11 +315,13 @@ static void binary(bool canAssign)
         break;
     case TOKEN_GREATER_EQUAL:
         emitBytes(OP_LESS, OP_NOT);
+        break;
     case TOKEN_LESS:
         emitByte(OP_LESS);
         break;
     case TOKEN_LESS_EQUAL:
         emitBytes(OP_GREATER, OP_NOT);
+        break;
     default:
         break;
     }
@@ -453,13 +468,13 @@ ParserRule rules[] = {
     [TOKEN_SLASH] = {NULL, binary, PREC_FACTOR},
     [TOKEN_STAR] = {NULL, binary, PREC_FACTOR},
     [TOKEN_BANG] = {unary, NULL, PREC_NONE},
-    [TOKEN_BANG_EQUAL] = {NULL, binary, PREC_NONE},
+    [TOKEN_BANG_EQUAL] = {NULL, binary, PREC_EQUALITY},
     [TOKEN_EQUAL] = {NULL, NULL, PREC_NONE},
-    [TOKEN_EQUAL_EQUAL] = {NULL, binary, PREC_NONE},
-    [TOKEN_GREATER] = {NULL, binary, PREC_NONE},
-    [TOKEN_GREATER_EQUAL] = {NULL, binary, PREC_NONE},
-    [TOKEN_LESS] = {NULL, binary, PREC_NONE},
-    [TOKEN_LESS_EQUAL] = {NULL, binary, PREC_NONE},
+    [TOKEN_EQUAL_EQUAL] = {NULL, binary, PREC_EQUALITY},
+    [TOKEN_GREATER] = {NULL, binary, PREC_COMPARISON},
+    [TOKEN_GREATER_EQUAL] = {NULL, binary, PREC_COMPARISON},
+    [TOKEN_LESS] = {NULL, binary, PREC_COMPARISON},
+    [TOKEN_LESS_EQUAL] = {NULL, binary, PREC_COMPARISON},
     [TOKEN_STRING] = {string, NULL, PREC_NONE},
     [TOKEN_IDENTIFIER] = {NULL, NULL, PREC_NONE},
     [TOKEN_NUMBER] = {number, NULL, PREC_NONE},
@@ -629,7 +644,14 @@ static void block()
 static void whileStatement()
 {
     int loopStart = currentChunk()->count;
-    consume(TOKEN_LEFT_BRACE, "not is )");
+
+    LoopContext loopContext;
+    loopContext.breakCount = 0;
+    loopContext.continueTarget = loopStart;
+    loopContext.scopeDepth = current->scopeDepth;
+    loops[loopDepth++] = loopContext;
+
+    consume(TOKEN_LEFT_BRACE, "not is (");
     expression();
     consume(TOKEN_RIGHT_BRACE, "not is )");
 
@@ -640,7 +662,17 @@ static void whileStatement()
     emitLoop(loopStart);
 
     patchJump(exitJump);
+
+    // 为了清理表达式的结果
     emitByte(OP_POP);
+
+    LoopContext *depth = &loops[loopDepth - 1];
+    for (int i = 0; i < depth->breakCount; i++)
+    {
+        int point = depth->breakJumps[i];
+        patchJump(point);
+    }
+    loopDepth--;
 }
 static void switchCaseStatement()
 {
@@ -713,6 +745,7 @@ static void forStatement()
 
     int loopStart = currentChunk()->count;
     int exitJump = -1;
+
     if (!match(TOKEN_SEMICOLON))
     {
         expression();
@@ -720,17 +753,24 @@ static void forStatement()
         exitJump = emitJump(OP_JUMP_IF_FALSE);
         emitByte(OP_POP);
     }
-    if (!match(TOKEN_LEFT_PAREN))
+    if (!match(TOKEN_RIGHT_PAREN))
     {
         int bodyJump = emitJump(OP_JUMP);
         int incrementStart = currentChunk()->count;
         expression();
         emitByte(OP_POP);
-        consume(TOKEN_LEFT_PAREN, "");
+        consume(TOKEN_RIGHT_PAREN, "");
         emitLoop(loopStart);
         loopStart = incrementStart;
         patchJump(bodyJump);
     }
+
+    LoopContext loopContext;
+    loopContext.breakCount = 0;
+    loopContext.continueTarget = loopStart;
+    loopContext.scopeDepth = current->scopeDepth;
+    loops[loopDepth++] = loopContext;
+
     statement();
     emitLoop(loopStart);
 
@@ -740,7 +780,16 @@ static void forStatement()
         emitByte(OP_POP);
     }
 
+    LoopContext *depth = &loops[loopDepth - 1];
+    for (int i = 0; i < depth->breakCount; i++)
+    {
+        int point = depth->breakJumps[i];
+        patchJump(point);
+    }
+
     endScope();
+
+    loopDepth--;
 }
 
 static void ifStatement()
@@ -753,7 +802,7 @@ static void ifStatement()
     emitByte(OP_POP);
     statement();
 
-    int elseJump = emitJump(OP_JUMP);
+    int endJump = emitJump(OP_JUMP);
 
     patchJump(thenJump);
     emitByte(OP_POP);
@@ -761,10 +810,57 @@ static void ifStatement()
     {
         statement();
     }
+    patchJump(endJump);
 }
 static void continueStatement()
 {
-    consume(TOKEN_SEMICOLON, )
+    consume(TOKEN_SEMICOLON, "need ;");
+    if (loopDepth == 0)
+    {
+        error("loopDepth is 0");
+        return;
+    }
+    int depth = loopDepth - 1;
+    LoopContext *currentLoopContext = &loops[depth];
+    for (int i = current->localCount; i > 0; i--)
+    {
+        if (current->locals[i - 1].depth > currentLoopContext->scopeDepth)
+        {
+            emitByte(OP_POP);
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    emitLoop(currentLoopContext->continueTarget);
+}
+
+static void BreakStatement()
+{
+    if (loopDepth == 0)
+    {
+        error("loops is 0");
+        return;
+    }
+    consume(TOKEN_SEMICOLON, "need ';'");
+    int depth = loopDepth - 1;
+    LoopContext *currentLoopContext = &loops[depth];
+    for (int i = current->localCount; i > 0; i--)
+    {
+        if (current->locals[i - 1].depth > currentLoopContext->scopeDepth)
+        {
+            emitByte(OP_POP);
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    int jump = emitJump(OP_JUMP);
+    currentLoopContext->breakJumps[currentLoopContext->breakCount++] = jump;
 }
 static void statement()
 {
@@ -791,6 +887,10 @@ static void statement()
     else if (match(TOKEN_FOR))
     {
         forStatement();
+    }
+    else if (match(TOKEN_BREAK))
+    {
+        BreakStatement();
     }
     else if (match(TOKEN_LEFT_BRACE))
     {

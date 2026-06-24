@@ -1,0 +1,48 @@
+print "switch case hit";
+
+var x = 2;
+
+switch (x) {
+  case 1:
+    print "one";
+
+  case 2:
+    print "two";
+    print "matched two";
+
+  case 3:
+    print "three";
+
+  default:
+    print "other";
+}
+
+print "switch default hit";
+
+var y = 9;
+
+switch (y) {
+  case 1:
+    print "y is one";
+
+  case 2:
+    print "y is two";
+
+  default:
+    print "y is other";
+}
+
+print "switch expression hit";
+
+var z = 3;
+
+switch (z + 1) {
+  case 3:
+    print "three";
+
+  case 4:
+    print "four";
+
+  default:
+    print "not four";
+}

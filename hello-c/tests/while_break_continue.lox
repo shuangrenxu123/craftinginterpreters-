@@ -2,14 +2,14 @@ var i = 0;
 var sum = 0;
 var afterContinue = 0;
 
-while { i < 6 } {
+while (i < 6) {
   i = i + 1;
 
-  if { i == 2 } {
+  if (i == 2) {
     continue;
   }
 
-  if { i == 5 } {
+  if (i == 5) {
     break;
   }
 

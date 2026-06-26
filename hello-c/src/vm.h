@@ -4,14 +4,24 @@
 #include "chunk.h"
 #include "value.h"
 #include "table.h"
+#include "object.h"
+#define FRAMES_MAX 64
+#define STACK_MAX (FRAMES_MAX * UINT8_COUNT)
 
-#define STACK_MAX 256
+// 代表了一个函数的调用
+typedef struct
+{
+    ObjFunction *function;
+    uint8_t *ip;
+    // 函数可以使用的第一个槽
+    value *slots;
+
+} CallFrame;
 
 typedef struct
 {
-    chunk *chunk;
-    // Points to the next bytecode instruction to execute.
-    uint8_t *ip;
+    CallFrame frames[FRAMES_MAX];
+    int frameCount;
 
     value stack[STACK_MAX];
     value *stackTop;

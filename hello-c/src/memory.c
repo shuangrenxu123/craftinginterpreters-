@@ -31,7 +31,13 @@ static void freeObject(Obj *freeObject)
         FREE_ARRAY(char, objStr->chars, objStr->length + 1);
         FREE(ObjString, freeObject);
         break;
-
+    case OBJ_FUNCTION:
+        ObjFunction *objFunction = (ObjFunction *)freeObject;
+        freeChunk(&objFunction->chunk);
+        FREE(objFunction, freeObject);
+        break;
+    case OBJ_NATIVE:
+        FREE(OBJ_NATIVE, freeObject);
     default:
         break;
     }
@@ -41,7 +47,7 @@ void freeObjects()
     Obj *object = vm.objects;
     while (object != NULL)
     {
-        Obj *next =  object->next;
+        Obj *next = object->next;
         freeObject(object);
         object = next;
     }

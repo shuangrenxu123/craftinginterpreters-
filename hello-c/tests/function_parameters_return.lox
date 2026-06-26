@@ -1,0 +1,10 @@
+fun add(a, b, c) {
+  return a + b + c;
+}
+
+fun noReturn() {
+  print "inside noReturn";
+}
+
+print add(1, 2, 3);
+print noReturn();

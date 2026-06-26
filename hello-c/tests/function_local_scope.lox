@@ -1,0 +1,9 @@
+var value = "global";
+
+fun showLocal() {
+  var value = "local";
+  print value;
+}
+
+showLocal();
+print value;

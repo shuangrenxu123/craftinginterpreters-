@@ -63,41 +63,43 @@ function Assert-LoxFailure {
 }
 
 Assert-LoxOutput `
-    -Name 'for 循环执行并支持 break' `
-    -ScriptPath (Join-Path $PSScriptRoot 'for_break.lox') `
+    -Name '函数声明和无参调用' `
+    -ScriptPath (Join-Path $PSScriptRoot 'function_basic.lox') `
     -ExpectedLines @(
-        '3',
-        'for break done'
+        'hello'
     )
 
 Assert-LoxOutput `
-    -Name 'while 循环执行并支持 break' `
-    -ScriptPath (Join-Path $PSScriptRoot 'while_break.lox') `
+    -Name '函数参数、返回值和默认 nil 返回' `
+    -ScriptPath (Join-Path $PSScriptRoot 'function_parameters_return.lox') `
     -ExpectedLines @(
-        '3',
-        '3',
-        'while break done'
+        '6',
+        'inside noReturn',
+        'nil'
     )
 
 Assert-LoxOutput `
-    -Name 'while 循环同时支持 break 和 continue' `
-    -ScriptPath (Join-Path $PSScriptRoot 'while_break_continue.lox') `
+    -Name '函数嵌套调用' `
+    -ScriptPath (Join-Path $PSScriptRoot 'function_nested_calls.lox') `
     -ExpectedLines @(
-        '8',
-        '3',
-        '5',
-        'while break continue done'
+        '20'
     )
 
 Assert-LoxOutput `
-    -Name 'for 循环同时支持 break 和 continue' `
-    -ScriptPath (Join-Path $PSScriptRoot 'for_break_continue.lox') `
+    -Name '递归函数调用' `
+    -ScriptPath (Join-Path $PSScriptRoot 'function_recursion.lox') `
     -ExpectedLines @(
-        '8',
-        '4',
-        'for break continue done'
+        '55'
+    )
+
+Assert-LoxOutput `
+    -Name '函数局部变量不覆盖全局变量' `
+    -ScriptPath (Join-Path $PSScriptRoot 'function_local_scope.lox') `
+    -ExpectedLines @(
+        'local',
+        'global'
     )
 
 Assert-LoxFailure `
-    -Name 'if 条件不支持花括号语法' `
-    -ScriptPath (Join-Path $PSScriptRoot 'invalid_brace_condition.lox')
+    -Name '函数实参数量错误会失败' `
+    -ScriptPath (Join-Path $PSScriptRoot 'function_arity_error.lox')

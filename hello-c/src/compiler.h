@@ -2,6 +2,7 @@
 #define COMPILER_H
 #include <stdbool.h>
 #include "chunk.h"
-bool compile(const char *source, chunk *chunk);
+#include "object.h"
+ObjFunction *compile(const char *source);
 
 #endif

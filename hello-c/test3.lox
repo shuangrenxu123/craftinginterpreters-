@@ -1,0 +1,7 @@
+fun double(x) {
+    return x * 2;
+}
+fun quadruple(x) {
+    return double(double(x));
+}
+print quadruple(5);

@@ -214,6 +214,8 @@ int disassembleInstruction(chunk *chunk, int offset)
         return jumpInstruction("OP_LOOP", -1, chunk, offset);
     case OP_DUP:
         return simpleInstruction("OP_Dup", offset);
+    case OP_CALL:
+        return byteInstruction("OP_CALL", chunk, offset);
     default:
         printf("UnKnow opcode");
         break;

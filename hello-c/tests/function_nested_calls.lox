@@ -1,0 +1,9 @@
+fun double(n) {
+  return n * 2;
+}
+
+fun quadruple(n) {
+  return double(double(n));
+}
+
+print quadruple(5);

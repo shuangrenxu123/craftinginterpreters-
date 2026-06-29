@@ -133,25 +133,14 @@ void freeVM()
     freeObjects();
 }
 
-#define READ_BYTE() (*frame->ip++)
+#define READ_BYTE() (*ip++)
 
-static inline value read_constant(CallFrame *frame)
-{
-    uint8_t index = READ_BYTE();
-    return frame->function->chunk.constants.value[index];
-}
-static inline value read_constant_long(CallFrame *frame)
-{
-    uint8_t index_1 = READ_BYTE();
-    uint8_t index_2 = READ_BYTE();
-    uint8_t index_3 = READ_BYTE();
-    uint32_t index = index_1 << 16 | index_2 << 8 | index_3;
-    return frame->function->chunk.constants.value[index];
-}
 #define READ_SHORT() \
-    (frame->ip += 2, (uint16_t)((frame->ip[-2] << 8) | frame->ip[-1]))
+    (ip += 2, (uint16_t)((ip[-2] << 8) | ip[-1]))
 
-#define READ_CONSTANT() read_constant(frame)
+#define READ_CONSTANT()     (frame->function->chunk.constants.value[READ_BYTE()])
+
+#define READ_CONSTANT_LONG()     (frame->function->chunk.constants.value[         (READ_BYTE() << 16) | (READ_BYTE() << 8) | READ_BYTE()])
 
 #define READ_STRING() AS_STRING(READ_CONSTANT())
 #define BINARY_OP(valueType, op)                        \
@@ -170,6 +159,7 @@ static inline value read_constant_long(CallFrame *frame)
 static interpretResult run()
 {
     CallFrame *frame = &vm.frames[vm.frameCount - 1];
+    uint8_t *ip = frame->ip;
 
     while (1)
     {
@@ -183,20 +173,20 @@ static interpretResult run()
         }
         printf("\n");
         disassembleInstruction(&frame->function->chunk,
-                               (int)(frame->ip - frame->function->chunk.code));
+                               (int)(ip - frame->function->chunk.code));
 #endif
         uint8_t instruction;
         switch (instruction = READ_BYTE())
         {
         case OP_CONSTANT_LONG:
         {
-            value constant = read_constant_long(frame);
+            value constant = READ_CONSTANT_LONG();
             push(constant);
             break;
         }
         case OP_CONSTANT:
         {
-            value constant = read_constant(frame);
+            value constant = READ_CONSTANT();
             push(constant);
             break;
         }
@@ -285,6 +275,7 @@ static interpretResult run()
             vm.stackTop = frame->slots;
             push(result);
             frame = &vm.frames[vm.frameCount - 1];
+            ip = frame->ip;
             break;
         };
         case OP_POP:
@@ -335,7 +326,7 @@ static interpretResult run()
         case OP_JUMP:
         {
             uint16_t offset = READ_SHORT();
-            frame->ip += offset;
+            ip += offset;
             break;
         }
         case OP_JUMP_IF_FALSE:
@@ -343,14 +334,14 @@ static interpretResult run()
             uint16_t offset = READ_SHORT();
             if (isFalsey(peek(0)))
             {
-                frame->ip += offset;
+                ip += offset;
             }
             break;
         }
         case OP_LOOP:
         {
             uint16_t offset = READ_SHORT();
-            frame->ip -= offset;
+            ip -= offset;
             break;
         }
         case OP_DUP:
@@ -361,11 +352,13 @@ static interpretResult run()
         case OP_CALL:
         {
             int argCount = READ_BYTE();
+            frame->ip = ip;
             if (!callValue(peek(argCount), argCount))
             {
                 return INTERPRET_ERROR;
             }
             frame = &vm.frames[vm.frameCount - 1];
+            ip = frame->ip;
             break;
         }
         }

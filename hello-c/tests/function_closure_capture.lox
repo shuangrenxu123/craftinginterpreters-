@@ -1,0 +1,12 @@
+fun makePrinter() {
+  var message = "captured";
+
+  fun printMessage() {
+    print message;
+  }
+
+  return printMessage;
+}
+
+var printer = makePrinter();
+printer();

@@ -100,6 +100,24 @@ Assert-LoxOutput `
         'global'
     )
 
+Assert-LoxOutput `
+    -Name '闭包返回后仍能读取捕获变量' `
+    -ScriptPath (Join-Path $PSScriptRoot 'function_closure_capture.lox') `
+    -ExpectedLines @(
+        'captured'
+    )
+
+Assert-LoxOutput `
+    -Name '闭包能保留状态且实例互不共享' `
+    -ScriptPath (Join-Path $PSScriptRoot 'function_closure_state.lox') `
+    -ExpectedLines @(
+        '1',
+        '2',
+        '1',
+        '3',
+        '2'
+    )
+
 Assert-LoxFailure `
     -Name '函数实参数量错误会失败' `
     -ScriptPath (Join-Path $PSScriptRoot 'function_arity_error.lox')

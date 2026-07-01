@@ -54,7 +54,7 @@ typedef struct ObjUpvalue
     Obj obj;
     value *location;
     struct ObjUpvalue *next;
-    value* closed;
+    value closed;
 } ObjUpvalue;
 
 typedef struct
@@ -77,7 +77,7 @@ ObjNative *newNative(NativeFn function);
 ObjClosure *newClosure(ObjFunction *function);
 
 ObjString *copyString(const char *chars, int length);
-ObjUpvalue *newUpvalue(value *value);
+ObjUpvalue *newUpvalue(value *slot);
 
 ObjString *takeString(char *chars, int length);
 static inline bool isObjType(value value, ObjType type)

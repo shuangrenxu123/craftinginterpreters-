@@ -103,10 +103,10 @@ ObjClosure *newClosure(ObjFunction *function)
     closure->upvalueCount = function->upvalueCount;
     return closure;
 }
-ObjUpvalue *newUpvalue(value *value)
+ObjUpvalue *newUpvalue(value *slot)
 {
     ObjUpvalue *upvalue = ALLOCATE_OBJ(ObjUpvalue, OBJ_UPVALUE);
-    upvalue->location = value;
+    upvalue->location = slot;
     upvalue->next = NULL;
     upvalue->closed = NIL_VAL;
     return upvalue;

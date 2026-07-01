@@ -120,7 +120,7 @@ static ObjUpvalue *captureUpvalue(value *local)
         upvalue = upvalue->next;
     }
 
-    if (upvalue != null && upvalue->location == local)
+    if (upvalue != NULL && upvalue->location == local)
     {
         return upvalue;
     }
@@ -138,7 +138,7 @@ static ObjUpvalue *captureUpvalue(value *local)
     }
     return createUpvalue;
 }
-static void closeUpvalues(Value *last)
+static void closeUpvalues(value *last)
 {
     while (vm.openUpvalues != NULL &&
            vm.openUpvalues->location >= last)
@@ -396,7 +396,7 @@ static interpretResult run()
             break;
         }
         case OP_CLOSE_UPVALUE:
-            closeUpvalue(vm.stackTop - 1);
+            closeUpvalues(vm.stackTop - 1);
             pop();
             break;
         case OP_CALL:

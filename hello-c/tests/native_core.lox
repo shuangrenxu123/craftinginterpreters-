@@ -1,0 +1,21 @@
+fun sample() {
+  return nil;
+}
+
+print type(123);
+print type(true);
+print type(nil);
+print type("lox");
+print type(sample);
+print type(clock);
+
+print str(123);
+print str(false);
+print str(nil);
+print str("lox");
+print str(sample);
+print str(clock);
+
+assert(true);
+assert(123);
+print "native core done";

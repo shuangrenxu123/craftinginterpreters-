@@ -11,7 +11,7 @@
 // 代表了一个函数的调用
 typedef struct
 {
-    ObjFunction *function;
+    ObjClosure *closure;
     uint8_t *ip;
     // 函数可以使用的第一个槽
     value *slots;
@@ -28,7 +28,7 @@ typedef struct
     Table globals;
     Table strings;
     Obj *objects;
-
+    ObjUpvalue *openUpvalues;
 } VM;
 
 typedef enum
@@ -41,6 +41,8 @@ extern VM vm;
 
 void initVM(void);
 void freeVM(void);
+void runtimeError(const char *format, ...);
+void defineNative(const char *name, NativeFn function);
 void push(value value);
 value pop(void);
 

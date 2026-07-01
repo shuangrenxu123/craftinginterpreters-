@@ -52,11 +52,18 @@ typedef struct
     ParserFn infix;
     Precedence precedence;
 } ParserRule;
+
 typedef struct
 {
     token name;
     int depth;
+    bool isCaptured;
 } Local;
+typedef struct
+{
+    uint8_t index;
+    bool isLocal;
+} Upvalue;
 
 typedef enum
 {
@@ -66,9 +73,11 @@ typedef enum
 
 typedef struct Compiler
 {
+    // 上一层的编译器
     struct Compiler *enclosing;
     ObjFunction *function;
     FunctionType type;
+    Upvalue upvalues[UINT8_COUNT];
     Local locals[UINT8_COUNT];
     int localCount;
     int scopeDepth;
@@ -218,7 +227,7 @@ static void addLocal(token name)
 
     Local *local = &current->locals[current->localCount++];
     local->name = name;
-
+    local->isCaptured = false;
     local->depth = -1;
 }
 
@@ -380,6 +389,7 @@ static void initCompiler(Compiler *compiler, FunctionType functionType)
 
     Local *local = &current->locals[current->localCount++];
     local->depth = 0;
+    local->isCaptured = false;
     local->name.start = "";
     local->name.length = 0;
 }
@@ -394,6 +404,10 @@ static void string(bool canAssign)
     emitConstant(OBJ_VAL(copyString(parser.previous.start + 1, parser.previous.length - 2)));
 }
 
+/// @brief 获取一个当前调用栈的变量下标
+/// @param compiler
+/// @param name
+/// @return
 static int resolveLocal(Compiler *compiler, token *name)
 {
     for (int i = compiler->localCount - 1; i >= 0; i--)
@@ -411,6 +425,48 @@ static int resolveLocal(Compiler *compiler, token *name)
 
     return -1;
 }
+static int addUpvalue(Compiler *compile, uint8_t localIndex, bool isLocal)
+{
+    int upvalueCount = compile->function->upvalueCount;
+    for (int i = 0; i < upvalueCount; i++)
+    {
+        Upvalue *upvalue = &compile->upvalues[i];
+        if (upvalue->index == localIndex && upvalue->isLocal == isLocal)
+        {
+            return i;
+        }
+    }
+    if (upvalueCount == UINT8_COUNT)
+    {
+        error("Too many closure variables in function.");
+        return 0;
+    }
+    compile->upvalues[upvalueCount].isLocal = isLocal;
+    compile->upvalues[upvalueCount].index = localIndex;
+    return compile->function->upvalueCount++;
+}
+
+/// @brief 寻找一个上值（闭包值）
+/// @param compile
+/// @param name
+static int resolveUpvalue(Compiler *compile, token *name)
+{
+    if (compile->enclosing == NULL)
+        return -1;
+    int local = resolveLocal(compile->enclosing, name);
+    if (local != -1)
+    {
+        compile->enclosing->locals[local].isCaptured = true;
+        return addUpvalue(compile, (uint8_t)local, true);
+    }
+
+    int upvalue = resolveUpvalue(compile->enclosing, name);
+    if (upvalue != -1)
+    {
+        return addUpvalue(compile, (uint8_t)upvalue, false);
+    }
+    return -1;
+}
 static void nameVariable(token name, bool canAsign)
 {
     uint8_t getop, setop;
@@ -419,6 +475,11 @@ static void nameVariable(token name, bool canAsign)
     {
         getop = OP_GET_LOCAL;
         setop = OP_SET_LOCAL;
+    }
+    else if ((arg = resolveUpvalue(current, &name)) != -1)
+    {
+        getop = OP_GET_UPVALUE;
+        setop = OP_SET_UPVALUE;
     }
     else
     {
@@ -498,11 +559,13 @@ static uint8_t argumentList()
     consume(TOKEN_RIGHT_PAREN, "need )");
     return argCount;
 }
+
 static void call(bool canASsign)
 {
     uint8_t argCount = argumentList();
     emitBytes(OP_CALL, argCount);
 }
+
 ParserRule rules[] = {
     [TOKEN_LEFT_PAREN] = {grouping, call, PREC_CALL},
     [TOKEN_RIGHT_PAREN] = {NULL, NULL, PREC_NONE},
@@ -689,7 +752,15 @@ static void endScope()
     while (current->localCount > 0 &&
            current->locals[current->localCount - 1].depth > current->scopeDepth)
     {
-        emitByte(OP_POP);
+        if (current->locals[current->localCount - 1].isCaptured)
+        {
+
+            emitByte(OP_CLOSE_UPVALUE);
+        }
+        else
+        {
+            emitByte(OP_POP);
+        }
         current->localCount--;
     }
 }
@@ -729,7 +800,14 @@ static void function(FunctionType type)
     block();
 
     ObjFunction *function = endCompiler();
-    emitConstant(OBJ_VAL(function));
+    emitByte(OP_CLOSURE);
+    emitByte(makeConstant(OBJ_VAL(function)));
+
+    for (int i = 0; i < function->upvalueCount; i++)
+    {
+        emitByte(compile.upvalues[i].isLocal ? 1 : 0);
+        emitByte(compile.upvalues[i].index);
+    }
 }
 
 static void whileStatement()

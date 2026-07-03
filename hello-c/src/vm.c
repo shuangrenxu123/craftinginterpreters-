@@ -62,6 +62,89 @@ static value peek(int distance)
 {
     return vm.stackTop[-1 - distance];
 }
+
+static void concatenate()
+{
+    ObjString *b = AS_STRING(peek(0));
+    ObjString *a = AS_STRING(peek(1));
+
+    int length = a->length + b->length;
+    char *chars = ALLOCATE(char, length + 1);
+    memcpy(chars, a->chars, a->length);
+    memcpy(chars + a->length, b->chars, b->length);
+    chars[length] = '\0';
+
+    pop();
+    pop();
+    push(OBJ_VAL(takeString(chars, length)));
+}
+
+static ObjString *valueToString(value val)
+{
+    char buffer[128];
+
+    switch (val.type)
+    {
+    case VAL_BOOL:
+        return copyString(AS_BOOL(val) ? "true" : "false",
+                          AS_BOOL(val) ? 4 : 5);
+    case VAL_NIL:
+        return copyString("nil", 3);
+    case VAL_NUMBER:
+    {
+        int length = snprintf(buffer, sizeof(buffer), "%g", AS_NUMBER(val));
+        if (length < 0 || length >= (int)sizeof(buffer))
+        {
+            runtimeError("string buffer overflow");
+            return NULL;
+        }
+        return copyString(buffer, length);
+    }
+    case VAL_OBJ:
+        switch (OBJ_TYPE(val))
+        {
+        case OBJ_STRING:
+            return AS_STRING(val);
+        case OBJ_FUNCTION:
+        {
+            ObjFunction *function = AS_FUNCTION(val);
+            if (function->name == NULL)
+            {
+                return copyString("<script>", 8);
+            }
+            int length = snprintf(buffer, sizeof(buffer), "<fn %s>", function->name->chars);
+            if (length < 0 || length >= (int)sizeof(buffer))
+            {
+                runtimeError("string buffer overflow");
+                return NULL;
+            }
+            return copyString(buffer, length);
+        }
+        case OBJ_CLOSURE:
+        {
+            ObjFunction *function = AS_CLOSURE(val)->function;
+            if (function->name == NULL)
+            {
+                return copyString("<script>", 8);
+            }
+            int length = snprintf(buffer, sizeof(buffer), "<fn %s>", function->name->chars);
+            if (length < 0 || length >= (int)sizeof(buffer))
+            {
+                runtimeError("string buffer overflow");
+                return NULL;
+            }
+            return copyString(buffer, length);
+        }
+        case OBJ_NATIVE:
+            return copyString("<native fn>", 11);
+        case OBJ_UPVALUE:
+            return copyString("<upvalue>", 9);
+        }
+    }
+
+    return copyString("<unknown>", 9);
+}
+
 static bool call(ObjClosure *closure, int argCount)
 {
     if (argCount != closure->function->arity)
@@ -110,6 +193,10 @@ static bool callValue(value callee, int argCount)
     runtimeError("can only call function and class");
     return false;
 }
+
+/// @brief 创建一个闭包值
+/// @param local
+/// @return
 static ObjUpvalue *captureUpvalue(value *local)
 {
     ObjUpvalue *preUpvalue = NULL;
@@ -141,7 +228,7 @@ static ObjUpvalue *captureUpvalue(value *local)
 static void closeUpvalues(value *last)
 {
     while (vm.openUpvalues != NULL &&
-           vm.openUpvalues->location >= last)
+           vm.openUpvalues->location >= last) // 比较指针的大小可以判断前后
     {
         ObjUpvalue *upvalue = vm.openUpvalues;
         upvalue->closed = *upvalue->location;
@@ -168,6 +255,11 @@ void initVM()
 {
     resetStack();
     vm.objects = NULL;
+    vm.bytesAllocated = 0;
+    vm.nextGC = 1024 * 1024;
+    vm.grayCount = 0;
+    vm.grayCapacity = 0;
+    vm.grayStack = NULL;
     initTable(&vm.strings);
     initTable(&vm.globals);
     defineNativeFunctions();
@@ -236,8 +328,24 @@ static interpretResult run()
             break;
         }
         case OP_ADD:
-            BINARY_OP(NUMBER_VAL, +);
+        {
+            if (IS_STRING(peek(0)) && IS_STRING(peek(1)))
+            {
+                concatenate();
+            }
+            else if (IS_NUMBER(peek(0)) && IS_NUMBER(peek(1)))
+            {
+                double b = AS_NUMBER(pop());
+                double a = AS_NUMBER(pop());
+                push(NUMBER_VAL(a + b));
+            }
+            else
+            {
+                runtimeError("Operands must be two numbers or two strings.");
+                return INTERPRET_RUNTIME;
+            }
             break;
+        }
         case OP_SUBTRACT:
             BINARY_OP(NUMBER_VAL, -);
             break;
@@ -284,22 +392,13 @@ static interpretResult run()
         }
         case OP_TOSTRING:
         {
-            if (!IS_NUMBER(peek(0)))
+            ObjString *string = valueToString(peek(0));
+            if (string == NULL)
             {
-                runtimeError("operand must be a number");
                 return INTERPRET_ERROR;
             }
-            double v = AS_NUMBER(pop());
-            char buffer[64];
-
-            int length = snprintf(buffer, sizeof(buffer), "%g", v);
-            if (length < 0 || length >= (int)sizeof(buffer))
-            {
-                runtimeError("string buffer overflow");
-                return INTERPRET_ERROR;
-            }
-
-            push(OBJ_VAL(copyString(buffer, length)));
+            pop();
+            push(OBJ_VAL(string));
             break;
         }
         case OP_PRINT:

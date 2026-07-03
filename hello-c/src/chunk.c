@@ -1,7 +1,7 @@
 #include "chunk.h"
 #include "memory.h"
 #include "value.h"
-
+#include "vm.h"
 void initChunk(chunk *chunk)
 {
     chunk->count = 0;
@@ -59,7 +59,9 @@ void writeChunk(chunk *chunk, uint8_t byte, int line)
 /// @return 常量对应数组的索引值
 static int addConstant(chunk *chunk, value value)
 {
+    push(value);
     writeValueArray(&(chunk->constants), value);
+    pop();
     return chunk->constants.count - 1;
 }
 

@@ -46,6 +46,16 @@ static token makeToken(tokenType type)
     return result;
 }
 
+static token makeTokenRange(tokenType type, const char *start, const char *end)
+{
+    token result;
+    result.type = type;
+    result.start = start;
+    result.length = (int)(end - start);
+    result.line = scanner.line;
+    return result;
+}
+
 static token errorToken(const char *message)
 {
     token result;
@@ -128,6 +138,7 @@ static tokenType checkKeyword(int start, int length, const char *rest, tokenType
 
 static token string(bool interpolation)
 {
+    const char *contentStart = scanner.start;
     while (!isAtEnd())
     {
         if (peek() == '"')
@@ -155,20 +166,26 @@ static token string(bool interpolation)
 
     if (peek() == '"')
     {
+        const char *contentEnd = scanner.current;
         advance();
-        return makeToken(TOKEN_STRING);
+        if (interpolation)
+        {
+            scanner.modelType = NORMAL;
+        }
+        return makeTokenRange(TOKEN_STRING, contentStart, contentEnd);
     }
 
     if (interpolation && peek() == '{')
     {
         if (scanner.current == scanner.start)
         {
+            const char *brace = scanner.current;
             advance();
             scanner.modelType = INTERPOLATION;
-            return makeToken(TOKEN_INTERPOLATION_START);
+            return makeTokenRange(TOKEN_INTERPOLATION_START, brace, brace + 1);
         }
 
-        return makeToken(TOKEN_STRING);
+        return makeTokenRange(TOKEN_STRING, contentStart, scanner.current);
     }
 
     return errorToken("String Error");
@@ -310,15 +327,17 @@ static token number()
 }
 token scanToken(void)
 {
+    if (scanner.modelType == INTERPOLATION_TEXT)
+    {
+        scanner.start = scanner.current;
+        return string(true);
+    }
+
     skipWhitespace();
     scanner.start = scanner.current;
     if (isAtEnd())
     {
         return makeToken(TOKEN_EOF);
-    }
-    if (scanner.modelType == INTERPOLATION_TEXT)
-    {
-        return string(true);
     }
     char c = advance();
 
@@ -380,8 +399,10 @@ token scanToken(void)
             return errorToken("next not is ");
         }
         scanner.modelType = INTERPOLATION_TEXT;
+        scanner.start = scanner.current;
         return string(true);
     case '"':
+        scanner.start = scanner.current;
         return string(false);
     }
     return errorToken("Unexpected character");

@@ -2,6 +2,7 @@
 #include "chunk.h"
 #include "scanner.h"
 #include "object.h"
+#include "memory.h"
 
 #ifdef DEBUG_PRINT_CODE
 #include "debug.h"
@@ -399,9 +400,31 @@ static void number(bool canAssign)
     double number = strtod(parser.previous.start, NULL);
     emitConstant(NUMBER_VAL(number));
 }
+
+static void emitStringToken(token stringToken)
+{
+    emitConstant(OBJ_VAL(copyString(stringToken.start, stringToken.length)));
+}
+
+static void appendInterpolationParts()
+{
+    while (match(TOKEN_INTERPOLATION_START))
+    {
+        expression();
+        consume(TOKEN_INTERPOLATION_END, "Expect '}' after interpolation expression");
+        emitByte(OP_TOSTRING);
+        emitByte(OP_ADD);
+
+        consume(TOKEN_STRING, "Expect string after interpolation expression");
+        emitStringToken(parser.previous);
+        emitByte(OP_ADD);
+    }
+}
+
 static void string(bool canAssign)
 {
-    emitConstant(OBJ_VAL(copyString(parser.previous.start + 1, parser.previous.length - 2)));
+    emitStringToken(parser.previous);
+    appendInterpolationParts();
 }
 
 /// @brief 获取一个当前调用栈的变量下标
@@ -453,6 +476,8 @@ static int resolveUpvalue(Compiler *compile, token *name)
 {
     if (compile->enclosing == NULL)
         return -1;
+
+    // 去他的上一层函数体 内找找有没有
     int local = resolveLocal(compile->enclosing, name);
     if (local != -1)
     {
@@ -460,6 +485,7 @@ static int resolveUpvalue(Compiler *compile, token *name)
         return addUpvalue(compile, (uint8_t)local, true);
     }
 
+    // 如果上层没有就去上上层找
     int upvalue = resolveUpvalue(compile->enclosing, name);
     if (upvalue != -1)
     {
@@ -527,6 +553,13 @@ static void Interpolation(bool canAssign)
     expression();
     consume(TOKEN_INTERPOLATION_END, "Expect '}' , after expression");
     emitByte(OP_TOSTRING);
+
+    if (match(TOKEN_STRING))
+    {
+        emitStringToken(parser.previous);
+        emitByte(OP_ADD);
+    }
+    appendInterpolationParts();
 }
 static void and(bool canAssign)
 {
@@ -1111,4 +1144,14 @@ ObjFunction *compile(const char *source)
 
     ObjFunction *func = endCompiler();
     return parser.hadError ? NULL : func;
+}
+
+void markCompilerRoots()
+{
+    Compiler *compile = current;
+    while (compile != NULL)
+    {
+        markObject((Obj *)compile->function);
+        compile = compile->enclosing;
+    }
 }

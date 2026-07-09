@@ -98,6 +98,7 @@ static void markRoots()
     markTable(&vm.globals);
 
     markCompilerRoots();
+    markObject((Obj *)vm.initString);
 }
 static void markArray(valueArray *array)
 {
@@ -137,6 +138,27 @@ static void blackenObject(Obj *object)
         {
             markObject((Obj *)closure->upvalues[i]);
         }
+        break;
+    }
+    case OBJ_BOUND_METHOD:
+    {
+        ObjBoundMethod *bound = (ObjBoundMethod *)object;
+        markValue(bound->receiver);
+        markObject((Obj *)bound->method);
+        break;
+    }
+    case OBJ_CLASS:
+    {
+        ObjClass *class = (ObjClass *)object;
+        markObject((Obj *)class->name);
+        markTable(&class->methods);
+        break;
+    }
+    case OBJ_INSTANCE:
+    {
+        ObjInstance *instance = (ObjInstance *)object;
+        markObject((Obj *)instance->class);
+        markTable(&instance->fields);
         break;
     }
     }
@@ -229,6 +251,23 @@ static void freeObject(Obj *freeObject)
     case OBJ_UPVALUE:
         FREE(ObjUpvalue, freeObject);
         break;
+    case OBJ_BOUND_METHOD:
+        FREE(ObjBoundMethod, freeObject);
+        break;
+    case OBJ_INSTANCE:
+    {
+        ObjInstance *instance = (ObjInstance *)freeObject;
+        freeTable(&instance->fields);
+        FREE(ObjInstance, freeObject);
+        break;
+    }
+    case OBJ_CLASS:
+    {
+        ObjClass *class = (ObjClass *)freeObject;
+        freeTable(&class->methods);
+        FREE(ObjClass, class);
+        break;
+    }
     default:
         break;
     }

@@ -15,8 +15,8 @@ typedef enum
 {
     OP_NEGATE, // 取反
 
-    OP_NIL,
     OP_TRUE,
+    OP_NIL,
     OP_FALSE,
 
     OP_ADD,      // +
@@ -51,7 +51,14 @@ typedef enum
 
     OP_CALL,
     OP_CLOSURE,
-    OP_CLOSE_UPVALUE
+    OP_CLOSE_UPVALUE,
+    OP_CLASS,
+
+    OP_SET_PROPERTY,
+    OP_GET_PROPERTY,
+
+    OP_METHOD,
+    OP_INVOKE
 } OpCode;
 
 typedef struct

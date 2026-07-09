@@ -284,10 +284,10 @@ void initVM()
     vm.grayStack = NULL;
 
     vm.initString = NULL;
-    vm.initString = copyString("init", 4);
 
     initTable(&vm.strings);
     initTable(&vm.globals);
+    vm.initString = copyString("init", 4);
     defineNativeFunctions();
 }
 void freeVM()
@@ -328,12 +328,20 @@ static void defineMethod(ObjString *name)
     pop();
 }
 
+static void defineField(ObjString *name)
+{
+    value v = peek(0);
+    ObjClass *class = AS_CLASS(peek(1));
+    tableSet(&class->fields, name, v);
+    pop();
+}
+
 static bool invokeFromClass(ObjClass *class, ObjString *name, int argCount)
 {
     value method;
-    if (!tableGet(class->methods, name, &method))
+    if (!tableGet(&class->methods, name, &method))
     {
-        return runtimeError("class no method");
+        runtimeError("class no method");
         return false;
     }
     return call(AS_CLOSURE(method), argCount);
@@ -344,28 +352,27 @@ static bool invoke(ObjString *name, int argCount)
     value receiver = peek(argCount);
     if (!IS_CLASSINSTANCE(receiver))
     {
-        returnError("Onl instance have methods");
+        runtimeError("Onl instance have methods");
+        return false;
     }
-    return false;
-    ObjInstance *instance = AS_INSTANCE(receiver);
+    ObjInstance *instance = AS_CLASSINSTANCE(receiver);
 
     value val;
 
     // 先尝试从类的字段里面找找，即他有一个字段是方法，我们调用了他的方法
     if (tableGet(&instance->fields, name, &val))
     {
-        vm.stackTop[-argCount - 1] = value;
-        return callValue(value, argCount);
+        vm.stackTop[-argCount - 1] = val;
+        return callValue(val, argCount);
     }
     return invokeFromClass(instance->class, name, argCount);
 }
 
-static void bindMethod(ObjClass *class, ObjString *name)
+static bool bindMethod(ObjClass *class, ObjString *name)
 {
     value method;
     if (!tableGet(&class->methods, name, &method))
     {
-        runtimeError("undefined property");
         return false;
     }
     ObjBoundMethod *bound = newBoundMethod(peek(0), AS_CLOSURE(method));
@@ -644,10 +651,10 @@ static interpretResult run()
             }
             if (!bindMethod(instance->class, name))
             {
+                runtimeError("Undefined property '%s'.", name->chars);
                 return INTERPRET_ERROR;
             }
-            runtimeError("Undefined property '%s'.", name->chars);
-            return INTERPRET_ERROR;
+            break;
         }
         case OP_SET_PROPERTY:
         {
@@ -657,7 +664,18 @@ static interpretResult run()
                 return INTERPRET_ERROR;
             }
             ObjInstance *instance = AS_CLASSINSTANCE(peek(1));
-            tableSet(&instance->fields, READ_STRING(), peek(0));
+
+            ObjString *name = READ_STRING();
+            value oldValue;
+            if (tableGet(&instance->fields, name, &oldValue))
+            {
+                tableSet(&instance->fields, name, peek(0));
+            }
+            else
+            {
+                runtimeError("class not this field");
+                return INTERPRET_ERROR;
+            }
             value val = pop();
             pop();
             push(val);
@@ -666,6 +684,11 @@ static interpretResult run()
         case OP_METHOD:
             defineMethod(READ_STRING());
             break;
+        case OP_FIELD:
+        {
+            defineField(READ_STRING());
+            break;
+        }
         case OP_INVOKE:
         {
             ObjString *method = READ_STRING();

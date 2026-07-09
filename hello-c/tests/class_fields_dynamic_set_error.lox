@@ -1,0 +1,7 @@
+class Person {
+  var name;
+}
+
+var person = Person();
+person.age = 18;
+print "unreachable";

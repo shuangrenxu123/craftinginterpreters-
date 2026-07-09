@@ -1,0 +1,9 @@
+class Box {
+  var value;
+}
+
+var box = Box();
+print box.value;
+box.value = "filled";
+print box.value;
+print "class fields default nil done";

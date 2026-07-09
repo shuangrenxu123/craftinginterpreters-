@@ -1,0 +1,7 @@
+class Person {
+  init(name) {
+    print name;
+  }
+}
+
+Person("Alice");

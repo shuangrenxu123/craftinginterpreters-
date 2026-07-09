@@ -1,0 +1,18 @@
+var next = 0;
+
+fun makeId() {
+  next = next + 1;
+  return next;
+}
+
+class User {
+  var id = makeId();
+}
+
+var first = User();
+var second = User();
+
+print first.id;
+print second.id;
+print next;
+print "class fields default expression once done";

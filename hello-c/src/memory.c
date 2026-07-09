@@ -152,6 +152,7 @@ static void blackenObject(Obj *object)
         ObjClass *class = (ObjClass *)object;
         markObject((Obj *)class->name);
         markTable(&class->methods);
+        markTable(&class->fields);
         break;
     }
     case OBJ_INSTANCE:
@@ -265,6 +266,7 @@ static void freeObject(Obj *freeObject)
     {
         ObjClass *class = (ObjClass *)freeObject;
         freeTable(&class->methods);
+        freeTable(&class->fields);
         FREE(ObjClass, class);
         break;
     }

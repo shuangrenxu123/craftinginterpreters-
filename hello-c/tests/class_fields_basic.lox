@@ -1,0 +1,19 @@
+class Person {
+  var name;
+  var age;
+
+  init(name, age) {
+    this.name = name;
+    this.age = age;
+  }
+
+  printName() {
+    print this.name;
+  }
+}
+
+var person = Person("Alice", 20);
+print person.name;
+print person.age;
+person.printName();
+print "class fields basic done";

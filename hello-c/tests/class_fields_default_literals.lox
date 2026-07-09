@@ -1,0 +1,16 @@
+class Defaults {
+  var name = "unnamed";
+  var count = 3;
+  var enabled = true;
+  var empty = nil;
+}
+
+var defaults = Defaults();
+print defaults.name;
+print defaults.count;
+print defaults.enabled;
+print defaults.empty;
+
+defaults.count = defaults.count + 2;
+print defaults.count;
+print "class fields default literals done";

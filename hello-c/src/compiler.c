@@ -811,6 +811,7 @@ static void method()
     uint8_t constant = identifierConstant(&parser.previous);
     FunctionType type = TYPE_METHOD;
 
+    // 判断是不是构造函数
     if (parser.previous.length == 4 &&
         memcmp(parser.previous.start, "init", 4) == 0)
     {
@@ -819,6 +820,23 @@ static void method()
 
     function(type);
     emitBytes(OP_METHOD, constant);
+}
+static void field()
+{
+    consume(TOKEN_IDENTIFIER, "Expect field name.");
+
+    uint8_t constant = identifierConstant(&parser.previous);
+    if (check(TOKEN_EQUAL))
+    {
+        advance();
+        expression();
+    }
+    else
+    {
+        emitByte(OP_NIL);
+    }
+    consume(TOKEN_SEMICOLON, "need ;");
+    emitBytes(OP_FIELD, constant);
 }
 
 static void classDeclaration()
@@ -838,7 +856,14 @@ static void classDeclaration()
     consume(TOKEN_LEFT_BRACE, "Expect '{' before class body.");
     while (!check(TOKEN_RIGHT_BRACE) && !check(TOKEN_EOF))
     {
-        method();
+        if (match(TOKEN_VAR))
+        {
+            field();
+        }
+        else
+        {
+            method();
+        }
     }
 
     consume(TOKEN_RIGHT_BRACE, "Expect '}' before class body.");

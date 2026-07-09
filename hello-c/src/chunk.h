@@ -58,6 +58,7 @@ typedef enum
     OP_GET_PROPERTY,
 
     OP_METHOD,
+    OP_FIELD,
     OP_INVOKE
 } OpCode;
 

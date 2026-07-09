@@ -1,0 +1,16 @@
+class Counter {
+  var count;
+
+  init(start) {
+    this.count = start;
+  }
+}
+
+var first = Counter(1);
+var second = Counter(10);
+
+first.count = first.count + 1;
+
+print first.count;
+print second.count;
+print "class fields instance isolation done";

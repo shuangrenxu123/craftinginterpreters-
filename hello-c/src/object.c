@@ -139,6 +139,7 @@ ObjClass *newClass(ObjString *name)
 
     class->name = name;
     initTable(&class->methods);
+    initTable(&class->fields);
 
     return class;
 }
@@ -147,6 +148,8 @@ ObjInstance *newInstance(ObjClass *class)
     ObjInstance *instance = ALLOCATE_OBJ(ObjInstance, OBJ_INSTANCE);
     instance->class = class;
     initTable(&instance->fields);
+    tableAddAll(&class->fields, &instance->fields);
+
     return instance;
 }
 ObjString *copyString(const char *chars, int length)

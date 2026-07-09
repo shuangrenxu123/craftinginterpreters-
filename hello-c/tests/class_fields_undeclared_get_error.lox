@@ -1,0 +1,6 @@
+class Person {
+  var name;
+}
+
+var person = Person();
+print person.age;
